@@ -173,7 +173,7 @@ class Server(object):
         [t.start() for t in threads]
         [t.join() for t in threads]
 
-        # Recieve client updates
+        # Receive client updates
         reports = self.reporting(sample_clients)
 
         # Perform weight aggregation

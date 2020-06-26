@@ -34,8 +34,7 @@ def main():
         "kcenter": server.KCenterServer(fl_config),
         "kmeans": server.KMeansServer(fl_config),
         "magavg": server.MagAvgServer(fl_config),
-        # "dqn": server.DQNServer(fl_config), # DQN server disabled
-        # "dqntrain": server.DQNTrainServer(fl_config), # DQN server disabled
+        "lth": server.LotteryServer(fl_config) 
     }[fl_config.server]
     fl_server.boot()
 
