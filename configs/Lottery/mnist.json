@@ -34,7 +34,7 @@
         "reports": "reports.pkl"
     },
     "server": "lth",
-    "model": "MNIST",
+    "model": "lottery",
     "lottery": {
         "subcommand": "lottery",
         "platform": "local",

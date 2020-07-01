@@ -12,3 +12,4 @@ lth_config = config.Config(
 
 lth_clt = LTHClient(0)
 lth_clt.configure(lth_config)
+lth_clt.train()

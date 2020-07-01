@@ -1,8 +1,12 @@
+# pylint: disable=E1101
+# pylint: disable=W0312
+
 import logging
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from client import Client
+from client import Report
 
 import argparse
 import sys
@@ -10,6 +14,7 @@ import sys
 from open_lth.cli import runner_registry
 from open_lth.cli import arg_utils
 import open_lth.platforms.registry as registry
+
 
 
 class LTHClient(Client):
@@ -31,41 +36,31 @@ class LTHClient(Client):
         """
         Set data in open_lth
         """
- 
+
+        dataset_name = self.args.dataset_name
+
         pass
     
     def set_bias(self, pref, bias):
-        pass
-
-    def download(self, argv):
-        pass
-
-    def upload(self, argv):
         pass
 
     def train(self):
         self.platform.run_job(runner_registry.get(
             self.args.subcommand).create_from_args(self.args).run)
 
+        # todo
+        weights = ...
+        self.report = Report(self)
+        self.report.weights = weights
+    
+
     def test(self):
         pass
 
-
     def configure(self, config):
-
-        # parser = argparse.ArgumentParser()
-        # parser.add_argument('subcommand')
-        # parser.add_argument('--platform', default='local', \
-        #     help='The platform on which to run the job.')
-        # parser.add_argument('--display_output_location', action='store_true', \
-        #     help='Display the output location for this job.')
-
-        platform_name = config.lottery["platform"]
-        runner_name = config.lottery["subcommand"]
-
-        # runner_registry.get(runner_name).add_args(parser) # add more arguments
-        # args = parser.parse_args()
-        
+        """
+        config: config object load from json
+        """        
         def load_parser(json_dict):
             t_args = argparse.Namespace()
             t_args.__dict__.update(json_dict)
@@ -74,8 +69,6 @@ class LTHClient(Client):
         # load arguments from config
         self.args = load_parser(config.lottery) 
 
-        self.platform = registry.get(platform_name).create_from_args(self.args)
-        
-        self.platform.run_job(
-            runner_registry.get(runner_name).create_from_args(self.args).run)
+        self.platform = registry.get(
+            config.lottery["platform"]).create_from_args(self.args)
         
