@@ -9,7 +9,7 @@ import sys
 
 from open_lth.cli import runner_registry
 from open_lth.cli import arg_utils
-import open_lth.platforms as platforms
+import open_lth.platforms.registry as registry
 
 
 class LTHClient(Client):
@@ -50,30 +50,32 @@ class LTHClient(Client):
     def test(self):
         pass
 
-    def __load_parser(self, parser, json_dict):
-        pass
 
     def configure(self, config):
-        # load json config to argparse parser
 
-        parser = argparse.ArgumentParser()
-        parser.add_argument('subcommand')
-        parser.add_argument('--platform', default='local', \
-            help='The platform on which to run the job.')
-        parser.add_argument('--display_output_location', action='store_true', \
-            help='Display the output location for this job.')
+        # parser = argparse.ArgumentParser()
+        # parser.add_argument('subcommand')
+        # parser.add_argument('--platform', default='local', \
+        #     help='The platform on which to run the job.')
+        # parser.add_argument('--display_output_location', action='store_true', \
+        #     help='Display the output location for this job.')
 
-        self.__load_parser(parser, config.lottery)
+        platform_name = config.lottery["platform"]
+        runner_name = config.lottery["subcommand"]
 
-        platform_name = config["lottery"]["platform"]
-        runner_name = config["lottery"]["subcommand"]
-
-        runner_registry.get(runner_name).add_args(parser)
-        self.args = parser.parse_args()
-
-        self.platform = \
-            platforms.registry.get(platform_name).create_from_args(self.args)
-
-        runner_registry.get(runner_name).add_args(self.args)
+        # runner_registry.get(runner_name).add_args(parser) # add more arguments
+        # args = parser.parse_args()
+        
+        def load_parser(json_dict):
+            t_args = argparse.Namespace()
+            t_args.__dict__.update(json_dict)
+            return t_args
             
+        # load arguments from config
+        self.args = load_parser(config.lottery) 
+
+        self.platform = registry.get(platform_name).create_from_args(self.args)
+        
+        self.platform.run_job(
+            runner_registry.get(runner_name).create_from_args(self.args).run)
         

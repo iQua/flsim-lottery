@@ -64,3 +64,6 @@ class Config(object):
 
         # -- Server --
         self.server = config['server']
+
+        # -- Lottery --
+        self.lottery = config['lottery']
