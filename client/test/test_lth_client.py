@@ -8,7 +8,7 @@ from lth_client import LTHClient
 import config
 
 lth_config = config.Config(
-    "/Users/hao/Documents/Code/flsim-lottery/configs/Lottery/mnist.json")
+    "/home/ubuntu/flsim-lottery/configs/Lottery/mnist.json")
 
 lth_clt = LTHClient(0)
 lth_clt.configure(lth_config)

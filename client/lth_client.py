@@ -8,12 +8,16 @@ import torch.optim as optim
 from client import Client
 from client import Report
 
+import os
 import argparse
 import sys
 
 from open_lth.cli import runner_registry
 from open_lth.cli import arg_utils
-import open_lth.platforms.registry as registry
+
+import open_lth.models.registry as models_registry
+import open_lth.platforms.registry as platforms_registry
+
 
 
 
@@ -36,7 +40,6 @@ class LTHClient(Client):
         """
         Set data in open_lth
         """
-
         dataset_name = self.args.dataset_name
 
         pass
@@ -45,14 +48,38 @@ class LTHClient(Client):
         pass
 
     def train(self):
-        self.platform.run_job(runner_registry.get(
-            self.args.subcommand).create_from_args(self.args).run)
-
         # todo
-        weights = ...
+        # get lotteryRunner
+        lottery_runner = runner_registry.get(self.args.subcommand).create_from_args(self.args)
+        # model saved location: lotteryRunner.desc.run_path(lotteryRunner.replicate, level)
+        self.platform.run_job(lottery_runner.run)
+        
+        #path_to_lottery = "/home/ubuntu/open_lth_data/lottery_9e01d1d4915e54abaeca655f83b1106e/replicate_1/level_0/main"
+        
+        target_level = 1
+        epoch_num = int(self.args.training_steps[0])
+        print(epoch_num)
+
+        lottery_folder = lottery_runner.desc.lottery_saved_folder
+        path_to_lottery = os.path.join(lottery_folder, f'replicate_{lottery_runner.replicate}', 
+                                            f'level_{target_level}', 'main', f'model_ep{epoch_num}_it0.pth')
+        print(path_to_lottery)
+
+        #init the model
+        self.model = models_registry.get(lottery_runner.desc.model_hparams, outputs=lottery_runner.desc.train_outputs)
+        #load lottery
+        self.model.load_state_dict(torch.load(path_to_lottery))
+        weights = self.extract_weights(self.model)
+
         self.report = Report(self)
         self.report.weights = weights
     
+    def extract_weights(self, model):
+        weights = []
+        for name, weight in model.to(torch.device('cpu')).named_parameters():  # pylint: disable=no-member
+            if(weight.requires_grad):
+                weights.append((name, weight.data))
+        return weights
 
     def test(self):
         pass
@@ -68,7 +95,9 @@ class LTHClient(Client):
             
         # load arguments from config
         self.args = load_parser(config.lottery) 
-
-        self.platform = registry.get(
+        
+        self.platform = platforms_registry.get(
             config.lottery["platform"]).create_from_args(self.args)
+
+    
         
