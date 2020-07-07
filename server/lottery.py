@@ -20,7 +20,7 @@ class LotteryServer(Server):
     """server for open_lth"""
 
     def __init__(self, config):
-        pass
+        super().__init__(config)
     
     def boot(self):
         logging.info('Booting {} server...'.format(self.config.server))

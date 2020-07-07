@@ -4,6 +4,7 @@ import config
 import logging
 import os
 import server
+import sys
 
 
 # Set up parser
@@ -17,7 +18,8 @@ args = parser.parse_args()
 
 # Set logging
 logging.basicConfig(
-    format='[%(levelname)s][%(asctime)s]: %(message)s', level=getattr(logging, args.log.upper()), datefmt='%H:%M:%S')
+    format='[%(levelname)s][%(asctime)s]: %(message)s', \
+        level=getattr(logging, args.log.upper()), datefmt='%H:%M:%S')
 
 
 def main():
