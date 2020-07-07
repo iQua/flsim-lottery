@@ -1,5 +1,5 @@
 import client
-import load_data
+#import load_data
 import logging
 import numpy as np
 import pickle
@@ -8,7 +8,7 @@ import sys
 from threading import Thread
 import torch
 import utils.dists as dists  # pylint: disable=no-name-in-module
-
+from utils.fl_model import load_weights, extract_weights # pylint: disable=no-name-in-module
 
 class Server(object):
     """Basic federated learning server."""
@@ -71,6 +71,9 @@ class Server(object):
         # Set up global model
         self.model = fl_model.Net()
         self.save_model(self.model, model_path)
+
+        # Extract baseline model weights
+        self.baseline_weights = extract_weights(self.model)
 
         # Extract flattened weights (if applicable)
         if self.config.paths.reports:
@@ -181,7 +184,7 @@ class Server(object):
         updated_weights = self.aggregation(reports)
 
         # Load updated weights
-        fl_model.load_weights(self.model, updated_weights)
+        load_weights(self.model, updated_weights)
 
         # Extract flattened weights (if applicable)
         if self.config.paths.reports:
@@ -248,11 +251,7 @@ class Server(object):
 
     # Report aggregation
     def extract_client_updates(self, reports):
-        import fl_model  # pylint: disable=import-error
-
-        # Extract baseline model weights
-        baseline_weights = fl_model.extract_weights(self.model)
-
+        
         # Extract weights from reports
         weights = [report.weights for report in reports]
 
@@ -261,7 +260,7 @@ class Server(object):
         for weight in weights:
             update = []
             for i, (name, weight) in enumerate(weight):
-                bl_name, baseline = baseline_weights[i]
+                bl_name, baseline = self.baseline_weights[i]
 
                 # Ensure correct weight is being updated
                 assert name == bl_name
@@ -274,8 +273,7 @@ class Server(object):
         return updates
 
     def federated_averaging(self, reports):
-        import fl_model  # pylint: disable=import-error
-
+        
         # Extract updates from reports
         updates = self.extract_client_updates(reports)
 
@@ -291,12 +289,10 @@ class Server(object):
                 # Use weighted average by number of samples
                 avg_update[j] += delta * (num_samples / total_samples)
 
-        # Extract baseline model weights
-        baseline_weights = fl_model.extract_weights(self.model)
 
         # Load updated weights into model
         updated_weights = []
-        for i, (name, weight) in enumerate(baseline_weights):
+        for i, (name, weight) in enumerate(self.baseline_weights):
             updated_weights.append((name, weight + avg_update[i]))
 
         return updated_weights
@@ -352,12 +348,12 @@ class Server(object):
         logging.info('Saved global model: {}'.format(path))
 
     def save_reports(self, round, reports):
-        import fl_model  # pylint: disable=import-error
 
         if reports:
-            self.saved_reports['round{}'.format(round)] = [(report.client_id, self.flatten_weights(
-                report.weights)) for report in reports]
+            self.saved_reports['round{}'.format(round)] = [(
+                report.client_id, self.flatten_weights(report.weights)) 
+                for report in reports]
 
         # Extract global weights
         self.saved_reports['w{}'.format(round)] = self.flatten_weights(
-            fl_model.extract_weights(self.model))
+            extract_weights(self.model))

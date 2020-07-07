@@ -2,7 +2,7 @@ import logging
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
+import numpy as np
 
 class Client(object):
     """Simulated federated learning client."""
@@ -120,4 +120,7 @@ class Report(object):
 
     def __init__(self, client):
         self.client_id = client.client_id
+        #lth client data is nadarry
+        if isinstance(client.data, np.ndarray):
+            client.data.tolist() 
         self.num_samples = len(client.data)
