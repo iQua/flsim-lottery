@@ -149,6 +149,8 @@ class Server(object):
         for round in range(1, rounds + 1):
             logging.info('**** Round {}/{} ****'.format(round, rounds))
 
+            self.config.lottery_args.round_num = round
+
             # Run the federated learning round
             accuracy = self.round()
 

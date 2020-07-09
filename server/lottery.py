@@ -13,8 +13,9 @@ sys.path.append("../client/")
 sys.path.append("../client/open_lth/")
 from client.lth_client import LTHClient # pylint: disable=impoprt-error
 import utils.dists as dists  # pylint: disable=no-name-in-module
-import utils.fl_model 
+import utils.fl_model as fl_model 
 import open_lth.models.registry as models_registry
+from open_lth.cli import runner_registry
 
 class LotteryServer(Server):
     """server for open_lth"""
@@ -39,6 +40,9 @@ class LotteryServer(Server):
     def load_model(self):
 
         model_path = self.config.paths.model
+
+        lottery_runner = runner_registry.get(
+            self.config.lottery_args.subcommand).create_from_args(self.config.lottery_args)
         #set up global model
         self.model = models_registry.get(
             lottery_runner.desc.model_hparams, 
@@ -46,7 +50,7 @@ class LotteryServer(Server):
 
         self.save_model(self.model, model_path)
         
-        self.baseline_weights = extract_weights(self.model)
+        self.baseline_weights = fl_model.extract_weights(self.model)
 
         #extract flattened weights
         if self.config.paths.reports:
@@ -68,7 +72,6 @@ class LotteryServer(Server):
     
     
     def round(self):
-
         sample_clients = self.selection()
 
         self.configuration(sample_clients)

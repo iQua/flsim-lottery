@@ -5,7 +5,7 @@ import logging
 import os
 import server
 import sys
-
+from datetime import datetime
 
 # Set up parser
 parser = argparse.ArgumentParser()
@@ -16,14 +16,19 @@ parser.add_argument('-l', '--log', type=str, default='INFO',
 
 args = parser.parse_args()
 
-# Set logging
-logging.basicConfig(
-    format='[%(levelname)s][%(asctime)s]: %(message)s', \
-        level=getattr(logging, args.log.upper()), datefmt='%H:%M:%S')
+
 
 
 def main():
     """Run a federated learning simulation."""
+
+    #set up log file
+    LOG_FILE = datetime.now().strftime('./logs/log_%H_%M_%S_%d_%m_%Y.log')
+
+    # Set logging
+    logging.basicConfig(filename=LOG_FILE, 
+                        format='[%(levelname)s][%(asctime)s]: %(message)s', 
+                        level=getattr(logging, args.log.upper()), datefmt='%H:%M:%S')
 
     # Read configuration file
     fl_config = config.Config(args.config)

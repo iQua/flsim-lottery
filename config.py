@@ -1,6 +1,6 @@
 from collections import namedtuple
 import json
-
+import argparse
 
 class Config(object):
     """Configuration module."""
@@ -65,5 +65,12 @@ class Config(object):
         # -- Server --
         self.server = config['server']
 
-        # -- Lottery --
         self.lottery = config['lottery']
+        # -- Lottery --
+        def load_parser(json_dict):
+            t_args = argparse.Namespace()
+            t_args.__dict__.update(json_dict)
+            return t_args
+            
+        # load arguments from config
+        self.lottery_args = load_parser(self.lottery) 

@@ -21,6 +21,7 @@ import open_lth.platforms.registry as platforms_registry
 
 
 
+
 class LTHClient(Client):
     """Federated learning client enabled with Lottery Ticket."""
 
@@ -48,14 +49,17 @@ class LTHClient(Client):
         pass
 
     def train(self):
-        # get lotteryRunner
+        #todo:
+        #add set_data and set_model part in lotteryRunner
+        #delete the bias and pref part in lottery config
+        #no need to init the model with the global model, not by the config
+        #get lotteryRunner
         lottery_runner = runner_registry.get(
             self.args.subcommand).create_from_args(self.args)
-       
+        
+        #run lottery
         self.platform.run_job(lottery_runner.run)
-        
-    
-        
+            
         target_level = 1
         epoch_num = int(self.args.training_steps[0])
         print(epoch_num)
@@ -87,16 +91,19 @@ class LTHClient(Client):
         """
         config: config object load from json
         """        
-        def load_parser(json_dict):
-            t_args = argparse.Namespace()
-            t_args.__dict__.update(json_dict)
-            return t_args
-            
-        # load arguments from config
-        self.args = load_parser(config.lottery) 
-        
+
+        self.args = config.lottery_args
+
+        self.args.client_id = self.client_id
+
         self.platform = platforms_registry.get(
             config.lottery["platform"]).create_from_args(self.args)
 
+        print(self.args)
+
+        #download most recent global model
+        path = config.paths.model + '/global'
+
+        
     
         
