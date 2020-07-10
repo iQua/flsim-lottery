@@ -41,7 +41,10 @@ class LTHClient(Client):
         """
         Set data in open_lth
         """
-        dataset_name = self.args.dataset_name
+        #from hparams_dataset.index_list get list
+        #pass into open_lth,the training & test dataloader 
+
+        #change open_lth part: create trainloader and testloader from config.
 
         pass
     
@@ -51,8 +54,8 @@ class LTHClient(Client):
     def train(self):
         #todo:
         #add set_data and set_model part in lotteryRunner
-        #delete the bias and pref part in lottery config
-        #no need to init the model with the global model, not by the config
+        
+        #need to init the model with the global model, not by the config
         #get lotteryRunner
         lottery_runner = runner_registry.get(
             self.args.subcommand).create_from_args(self.args)
