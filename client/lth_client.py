@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-sys.path.append("open_lth/")
+sys.path.append("./client/open_lth/")
 
 from client.client import Client, Report
 from utils.fl_model import extract_weights
@@ -21,7 +21,6 @@ import open_lth.platforms.registry as platforms_registry
 
 
 
-
 class LTHClient(Client):
     """Federated learning client enabled with Lottery Ticket."""
 
@@ -29,6 +28,7 @@ class LTHClient(Client):
         """
         Initialize open_lth
         """
+        self.client_id = client_id
         super().__init__(client_id)
         
 
@@ -95,6 +95,11 @@ class LTHClient(Client):
         self.args = config.lottery_args
 
         self.args.client_id = self.client_id
+        
+        parser = argparse.ArgumentParser()
+
+        # Add arguments for the various runners.
+        runner_registry.get("lottery").add_args(parser)
 
         self.platform = platforms_registry.get(
             config.lottery["platform"]).create_from_args(self.args)

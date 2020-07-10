@@ -8,9 +8,10 @@ from threading import Thread
 import torch
 from server import Server
 
-sys.path.append("..")
-sys.path.append("../client/")
-sys.path.append("../client/open_lth/")
+# sys.path.append("..")
+# sys.path.append("../client/")
+#sys.path.append("../client/open_lth/")
+
 from client.lth_client import LTHClient # pylint: disable=impoprt-error
 import utils.dists as dists  # pylint: disable=no-name-in-module
 import utils.fl_model as fl_model 

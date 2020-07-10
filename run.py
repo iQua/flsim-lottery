@@ -7,6 +7,8 @@ import server
 import sys
 from datetime import datetime
 
+# sys.path.append("./client/open_lth")
+
 # Set up parser
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--config', type=str, default='./config.json',
@@ -28,7 +30,8 @@ def main():
     # Set logging
     logging.basicConfig(filename=LOG_FILE, 
                         format='[%(levelname)s][%(asctime)s]: %(message)s', 
-                        level=getattr(logging, args.log.upper()), datefmt='%H:%M:%S')
+                        level=getattr(logging, args.log.upper()), 
+                        datefmt='%H:%M:%S')
 
     # Read configuration file
     fl_config = config.Config(args.config)
