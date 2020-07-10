@@ -79,7 +79,8 @@
         "client_num": 100,
         "bias_fraction": 0.2,
         "client_id": 3,
-        "round_num": 5
+        "round_num": 5,
+        "index_list": null
         
     }
 }

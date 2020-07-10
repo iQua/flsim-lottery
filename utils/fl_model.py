@@ -33,6 +33,7 @@ def get_testloader(dataset_name):
     testloader = torch.utils.data.DataLoader(testset, batch_size=4,
                                          shuffle=False, num_workers=2)
 
+    return testloader
 
 #modified from open_lth/training/standard_callbacks
 def test(model, testloader):

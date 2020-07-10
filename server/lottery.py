@@ -37,6 +37,20 @@ class LotteryServer(Server):
         self.make_clients(total_clients)
 
 
+    def generate_dataset_index(self):
+        #load bias and pref config
+        IID = self.config.data.IID
+        if not IID:
+            if self.config.data.bias:
+                bias = self.config.data.bias
+                #pref = random.chocies()
+        #get client and server dataset
+        #generate clients number's different trainset (what about test set?)
+        #need to assgin the client id to hparams_dataset's client_id here, not on client
+        #assign the hparams_dataset's index_list to different client
+        
+
+
     def load_model(self):
 
         model_path = self.config.paths.model
