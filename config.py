@@ -27,8 +27,8 @@ class Config(object):
         assert self.clients.per_round <= self.clients.total
 
         # -- Data --
-        fields = ['loading', 'partition', 'IID', 'bias', 'shard']
-        defaults = ('static', 0, True, None, None)
+        fields = ['loading', 'partition', 'IID', 'bias', 'shard', 'server_split']
+        defaults = ('static', 0, True, None, None, 0.1)
         params = [config['data'].get(field, defaults[i])
                   for i, field in enumerate(fields)]
         self.data = namedtuple('data', fields)(*params)

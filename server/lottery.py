@@ -34,22 +34,10 @@ class LotteryServer(Server):
         sys.path.append(model_path)
 
         # Set up simulated server
+        self.generate_dataset_index()
         self.load_model()
         self.make_clients(total_clients)
 
-
-    def generate_dataset_index(self):
-        #load bias and pref config
-        IID = self.config.data.IID
-        if not IID:
-            if self.config.data.bias:
-                bias = self.config.data.bias
-                #pref = random.chocies()
-        #get client and server dataset
-        #generate clients number's different trainset (what about test set?)
-        #need to assgin the client id to hparams_dataset's client_id here, not on client
-        #assign the hparams_dataset's index_list to different client
-        
 
 
     def load_model(self):
@@ -79,13 +67,53 @@ class LotteryServer(Server):
         clients = []
 
         for client_id in range(num_clients):
-            new_client = LTHClient(client_id)
+            dataset_indices = self.client_id_index_dict[client_id]
+            new_client = LTHClient(client_id, dataset_indices)
             clients.append(new_client)
         
         logging.info('Total clients: {}'.format(len(clients)))
         self.clients = clients
+
+        #attach the certain dataset index to each client
+        #static loading
     
     
+    def generate_dataset_index(self):
+        #get client and server dataset
+        dataset_name = self.config.lottery_args.dataset_name
+        
+        total_index = self.get_total_index(dataset_name)
+        #generate clients number's different trainset 
+        random.shuffle(total_index)
+
+        server_split = int(self.config.data.server_split * len(total_index))
+        clients_split = len(total_index) - server_split
+        total_clients = total_index[server_split:]
+        self.server_testset = total_index[:server_split]
+        
+        loading = self.config.data.loading
+        if loading == 'dynamic':
+            client_num = self.config.clients.per_round
+            #to finish
+
+        if loading == 'static':
+            client_num = self.config.clients.total
+            data_num_per_client = int(clients_split / client_num)
+            self.client_id_index_dict = {}
+            for i in range(client_num):
+                beg = data_num_per_client * i 
+                end = data_num_per_client * (i+1)
+                self.client_id_index_dict[i] = total_clients[beg:end]
+        
+               
+        
+    def get_total_index(self, dataset_name):
+        if dataset_name == "mnist" or dataset_name == "cifar10":
+            num = 60000
+        else:
+            print("dataset name is wrong")
+        return list(range(num))
+
     def round(self):
         sample_clients = self.selection()
 
@@ -110,7 +138,7 @@ class LotteryServer(Server):
 
         #todo
         #use openlth test to get accuracy 
-        testloader = fl_model.get_testloader(self.config.lottery.dataset_name)  
+        testloader = fl_model.get_testloader(self.config.lottery.dataset_name, self.server_testset)  
         accuracy = fl_model.test(self.model, testloader)
 
         logging.info('Average accuracy: {:.2f}%\n'.format(100 * accuracy))

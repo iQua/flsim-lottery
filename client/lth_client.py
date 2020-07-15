@@ -24,38 +24,30 @@ import open_lth.platforms.registry as platforms_registry
 class LTHClient(Client):
     """Federated learning client enabled with Lottery Ticket."""
 
-    def __init__(self, client_id):
+    def __init__(self, client_id, dataset_indices):
         """
         Initialize open_lth
         """
-        self.client_id = client_id
         super().__init__(client_id)
+        self.client_id = client_id
+        self.dataset_indices = dataset_indices
         
 
     def __repr__(self):
-        return 'LTH-Client #{}: {} samples in labels: {}'.format(
-            self.client_id, len(self.data), 
-            set([label for _, label in self.data]))
+        return 'LTH-Client #{}: {} samples'.format(
+            self.client_id, len(self.dataset_indices))
 
     def set_data(self, data, config):
         """
         Set data in open_lth
         """
-        #from hparams_dataset.index_list get list
-        #pass into open_lth,the training & test dataloader 
-
-        #change open_lth part: create trainloader and testloader from config.
-
         pass
     
     def set_bias(self, pref, bias):
         pass
 
     def train(self):
-        #todo:
-        #add set_data and set_model part in lotteryRunner
         
-        #need to init the model with the global model, not by the config
         #get lotteryRunner
         lottery_runner = runner_registry.get(
             self.args.subcommand).create_from_args(self.args)
@@ -98,7 +90,9 @@ class LTHClient(Client):
         self.args = config.lottery_args
 
         self.args.client_id = self.client_id
-        
+        self.args.index_list = ' '.join([str(index) for index in self.dataset_indices])
+        self.args.global_model_path = config.paths.model + '/global'
+
         parser = argparse.ArgumentParser()
 
         # Add arguments for the various runners.
@@ -107,10 +101,8 @@ class LTHClient(Client):
         self.platform = platforms_registry.get(
             config.lottery["platform"]).create_from_args(self.args)
 
-        print(self.args)
+        #print(self.args)
 
-        #download most recent global model
-        path = config.paths.model + '/global'
 
         
     

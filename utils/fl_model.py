@@ -25,15 +25,14 @@ def load_weights(model, weights):
 
     model.load_state_dict(updated_state_dict, strict=False)
 
-def get_testloader(dataset_name):
+def get_testloader(dataset_name, indices):
     if(dataset_name == 'mnist'):
-        testset = datasets.MNIST(root='./data', train=False,
+        dataset = datasets.MNIST(root='./data', train=True,
                                        download=True, transform=None)
-    
-    testloader = torch.utils.data.DataLoader(testset, batch_size=4,
-                                         shuffle=False, num_workers=2)
+    subset = Subset(dataset, indices)
+    dataloader = torch.utils.data.DataLoader(subset)
 
-    return testloader
+    return dataloader
 
 #modified from open_lth/training/standard_callbacks
 def test(model, testloader):

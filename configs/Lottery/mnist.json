@@ -7,13 +7,14 @@
         "test_partition": 0.2
     },
     "data": {
-        "loading": "dynamic",
+        "loading": "static",
         "partition": {
             "size": 600,
             "range": [
                 50,
                 200
-            ]
+            ],
+        "server_split": 0.1
         },
         "IID": false,
         "bias": {
@@ -78,9 +79,10 @@
         "pruning_layers_to_ignore": null,
         "client_num": 100,
         "bias_fraction": 0.2,
-        "client_id": 3,
+        "client_id": 0,
         "round_num": 5,
-        "index_list": null
+        "index_list": null,
+        "global_model_path": null
         
     }
 }
