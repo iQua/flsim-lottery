@@ -54,10 +54,12 @@ class LTHClient(Client):
         
         #run lottery
         self.platform.run_job(lottery_runner.run)
-            
-        target_level = 1
-        epoch_num = int(self.args.training_steps[0])
-        print(epoch_num)
+        
+        total_levels = self.args.levels
+        target_level = total_levels
+
+        epoch_num = int(self.args.training_steps[0:-2])
+        
 
         lottery_folder = lottery_runner.desc.lottery_saved_folder
         path_to_lottery = os.path.join(lottery_folder, 
@@ -76,6 +78,8 @@ class LTHClient(Client):
         weights = extract_weights(self.model)
 
         self.report = Report(self)
+        #set dataset number 
+        self.report.set_num_samples(len(self.dataset_indices))
         self.report.weights = weights
     
 
@@ -101,7 +105,7 @@ class LTHClient(Client):
         self.platform = platforms_registry.get(
             config.lottery["platform"]).create_from_args(self.args)
 
-        #print(self.args)
+        self.task = config.fl.task
 
 
         

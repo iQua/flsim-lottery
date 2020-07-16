@@ -1,4 +1,4 @@
-
+import os
 import logging
 import numpy as np
 import pickle
@@ -6,6 +6,7 @@ import random
 import sys
 from threading import Thread
 import torch
+import torchvision
 from server import Server
 
 # sys.path.append("..")
@@ -138,7 +139,7 @@ class LotteryServer(Server):
 
         #todo
         #use openlth test to get accuracy 
-        testloader = fl_model.get_testloader(self.config.lottery.dataset_name, self.server_testset)  
+        testloader = fl_model.get_testloader(self.config.lottery_args.dataset_name, self.server_testset)  
         accuracy = fl_model.test(self.model, testloader)
 
         logging.info('Average accuracy: {:.2f}%\n'.format(100 * accuracy))

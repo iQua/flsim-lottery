@@ -27,9 +27,24 @@ def load_weights(model, weights):
 
 def get_testloader(dataset_name, indices):
     if(dataset_name == 'mnist'):
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.1307], std=[0.3081])
+        ])
         dataset = datasets.MNIST(root='./data', train=True,
-                                       download=True, transform=None)
-    subset = Subset(dataset, indices)
+                                       download=True, transform=transform)
+
+    if(dataset_name == 'cifar10'):
+        transform = transforms.Compose([
+            transforms.RandomHorizontalFlip(), 
+            transforms.RandomCrop(32, 4),
+            transfroms.ToTensor()
+        ])
+        dataset = datasets.CIFAR10(root='./data', train=True, 
+                                    download=True, transform=transform)
+
+
+    subset = torch.utils.data.Subset(dataset, indices)
     dataloader = torch.utils.data.DataLoader(subset)
 
     return dataloader
@@ -37,23 +52,23 @@ def get_testloader(dataset_name, indices):
 #modified from open_lth/training/standard_callbacks
 def test(model, testloader):
 
-    images_count = torch.tensor(0.0).to(device)
-
-    total_correct = torch.tensor(0.0).to(device)
-
-    def correct(labels, outputs):
-            return torch.sum(torch.eq(labels, output.argmax(dim=1)))
-    
+    model.to(device)
     model.eval()
     
+    correct = 0
+    total = len(testloader.dataset)
+
     with torch.no_grad():
         for image, label in testloader:
+
             image, label = image.to(device), label.to(device)
             output = model(image)
-        
-            total_correct += correct(label, output)
+            
+            # get the index of the max log-probability
+            pred = output.argmax(dim=1, keepdim=True)
+            correct += pred.eq(label.view_as(pred)).sum().item()
 
-    accuracy = total_correct / images_count
+    accuracy = correct / total
     logging.debug('Accuracy: {:.2f}%'.format(100 * accuracy))
 
     return accuracy

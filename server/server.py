@@ -201,6 +201,7 @@ class Server(object):
         else:  # Test updated model on server
             testset = self.loader.get_testset()
             batch_size = self.config.fl.batch_size
+            
             testloader = fl_model.get_testloader(testset, batch_size)
             accuracy = fl_model.test(self.model, testloader)
 
