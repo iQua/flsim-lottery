@@ -93,11 +93,11 @@ class LotteryServer(Server):
         self.server_testset = total_index[:server_split]
         
         loading = self.config.data.loading
-        if loading == 'dynamic':
+        if loading == "dynamic":
             client_num = self.config.clients.per_round
             #to finish
 
-        if loading == 'static':
+        if loading == "static":
             client_num = self.config.clients.total
             data_num_per_client = int(clients_split / client_num)
             self.client_id_index_dict = {}
@@ -109,8 +109,10 @@ class LotteryServer(Server):
                
         
     def get_total_index(self, dataset_name):
-        if dataset_name == "mnist" or dataset_name == "cifar10":
+        if dataset_name == "mnist":
             num = 60000
+        if dataset_name == "cifar10":
+            num = 50000
         else:
             print("dataset name is wrong")
         return list(range(num))
