@@ -62,22 +62,25 @@ class LotteryServer(Server):
             self.save_reports(0, []) 
 
     def make_clients(self, num_clients):
-        #todo: 
-        #add different loading 
 
         clients = []
-
+        
         for client_id in range(num_clients):
-            dataset_indices = self.client_id_index_dict[client_id]
+
+            if self.loading == "static":
+                dataset_indices = self.id_index_dict[client_id]
+            if self.loading == "dynamic":
+                id_list = list(range(self.config.clients.per_round))
+                i = random.choice(id_list)
+                id_list.remove(i)
+                dataset_indices = self.id_index_dict[i]
+            
             new_client = LTHClient(client_id, dataset_indices)
             clients.append(new_client)
         
         logging.info('Total clients: {}'.format(len(clients)))
         self.clients = clients
 
-        #attach the certain dataset index to each client
-        #static loading
-    
     
     def generate_dataset_index(self):
         #get client and server dataset
@@ -92,19 +95,19 @@ class LotteryServer(Server):
         total_clients = total_index[server_split:]
         self.server_testset = total_index[:server_split]
         
-        loading = self.config.data.loading
-        if loading == "dynamic":
+        self.loading = self.config.data.loading
+        if self.loading == "dynamic":
             client_num = self.config.clients.per_round
-            #to finish
-
-        if loading == "static":
+            
+        if self.loading == "static":
             client_num = self.config.clients.total
-            data_num_per_client = int(clients_split / client_num)
-            self.client_id_index_dict = {}
-            for i in range(client_num):
-                beg = data_num_per_client * i 
-                end = data_num_per_client * (i+1)
-                self.client_id_index_dict[i] = total_clients[beg:end]
+        
+        data_num_per_client = int(clients_split / client_num)
+        self.id_index_dict = {}
+        for i in range(client_num):
+            beg = data_num_per_client * i 
+            end = data_num_per_client * (i+1)
+            self.id_index_dict[i] = total_clients[beg:end]
         
                
         

@@ -38,7 +38,7 @@ def get_testloader(dataset_name, indices):
         transform = transforms.Compose([
             transforms.RandomHorizontalFlip(), 
             transforms.RandomCrop(32, 4),
-            transfroms.ToTensor()
+            transforms.ToTensor() 
         ])
         dataset = datasets.CIFAR10(root='./data', train=True, 
                                     download=True, transform=transform)
