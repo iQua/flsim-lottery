@@ -25,30 +25,6 @@ def load_weights(model, weights):
 
     model.load_state_dict(updated_state_dict, strict=False)
 
-def get_testloader(dataset_name, indices):
-    if(dataset_name == 'mnist'):
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.1307], std=[0.3081])
-        ])
-        dataset = datasets.MNIST(root='./data', train=True,
-                                       download=True, transform=transform)
-
-    if(dataset_name == 'cifar10'):
-        transform = transforms.Compose([
-            transforms.RandomHorizontalFlip(), 
-            transforms.RandomCrop(32, 4),
-            transforms.ToTensor() 
-        ])
-        dataset = datasets.CIFAR10(root='./data', train=True, 
-                                    download=True, transform=transform)
-
-
-    subset = torch.utils.data.Subset(dataset, indices)
-    dataloader = torch.utils.data.DataLoader(subset)
-
-    return dataloader
-
 #modified from open_lth/training/standard_callbacks
 def test(model, testloader):
 

@@ -16,6 +16,7 @@ from server import Server
 from client.lth_client import LTHClient # pylint: disable=impoprt-error
 import utils.dists as dists  # pylint: disable=no-name-in-module
 import utils.fl_model as fl_model 
+from utils.load_dataset import get_partition, get_train_set, get_testloader
 import open_lth.models.registry as models_registry
 from open_lth.cli import runner_registry
 
@@ -34,8 +35,10 @@ class LotteryServer(Server):
         # Add fl_model to import path
         sys.path.append(model_path)
 
-        # Set up simulated server
+        #arrange data
         self.generate_dataset_index()
+
+        # Set up simulated server
         self.load_model()
         self.make_clients(total_clients)
 
@@ -83,42 +86,104 @@ class LotteryServer(Server):
 
     
     def generate_dataset_index(self):
-        #get client and server dataset
-        dataset_name = self.config.lottery_args.dataset_name
         
-        total_index = self.get_total_index(dataset_name)
-        #generate clients number's different trainset 
-        random.shuffle(total_index)
+        dataset = get_train_set(self.config.lottery_args.dataset_name)
 
-        server_split = int(self.config.data.server_split * len(total_index))
-        clients_split = len(total_index) - server_split
-        total_clients = total_index[server_split:]
-        self.server_testset = total_index[:server_split]
+        self.labels = dataset.targets
+
+        self.labels = [label.item() for label in self.labels if torch.is_tensor((label))]
         
+        self.labels = list(set(self.labels))
+        
+        print(self.labels)
+
+        self.label_idx_dict = {}
+        
+        server_split = self.config.data.server_split
+        self.server_indices = []
+        #get label_idx_dict
+        for label in self.labels:
+
+            label_idx = self.get_indices(dataset, label)
+            #label_idx = dataset.targets==label
+
+            random.shuffle(label_idx)
+            
+            server_num = int(len(label_idx) * server_split)
+
+            self.server_indices.extend(label_idx[:server_num])
+
+            self.label_idx_dict[self.labels.index(label)] = label_idx[server_num:]
+
+       
+        #get id_index_list
         self.loading = self.config.data.loading
         if self.loading == "dynamic":
-            client_num = self.config.clients.per_round
+            self.client_num = self.config.clients.per_round
             
         if self.loading == "static":
-            client_num = self.config.clients.total
-        
-        data_num_per_client = int(clients_split / client_num)
+            self.client_num = self.config.clients.total
+
+        #get nums for each label for one client partition
+        client_idx = self.get_client_idx_list()
+
         self.id_index_dict = {}
-        for i in range(client_num):
-            beg = data_num_per_client * i 
-            end = data_num_per_client * (i+1)
-            self.id_index_dict[i] = total_clients[beg:end]
         
-               
-        
-    def get_total_index(self, dataset_name):
-        if dataset_name == "mnist":
-            num = 60000
-        if dataset_name == "cifar10":
-            num = 50000
+        #every client has the same label distribution, only need one to indicate 
+        #but need a whole list to get different indexes
+
+        for label, idx in self.label_idx_dict.items():
+            #already shuffle
+            num_per_client = client_idx[self.labels.index(label)]
+
+            for i in range(self.client_num):
+
+                if i not in self.id_index_dict.keys():
+                    self.id_index_dict[i] = []
+
+                beg = num_per_client * i
+                end = num_per_client * (i+1)
+
+                self.id_index_dict[i].extend(idx[beg:end])
+    
+    def get_indices(self, dataset,label):
+        indices =  []
+        for i in range(len(dataset.targets)):
+            if dataset.targets[i] == label:
+                indices.append(i)
+        return indices
+
+
+    def get_client_idx_list(self):
+
+        #get number for each label list (only need one for all clients)
+        client_idx = []
+        if self.config.data.IID:
+            for label, idx in self.label_idx_dict.items():
+                client_idx.insert(self.labels.index(label), int(len(idx)/self.client_num))
+
         else:
-            print("dataset name is wrong")
-        return list(range(num))
+            bias = self.config.data.bias["primary"]
+            secondary = self.config.data.bias["secondary"]
+            
+            pref = random.choice(self.labels)
+            total_majority = len(self.label_idx_dict[pref])
+            majority = int(total_majority / self.client_num)
+
+            #for one client get partition
+            client_idx = get_partition(self.labels, majority, pref, bias, secondary)
+
+        return client_idx
+        
+
+
+    @staticmethod  
+    def get_dataset_num(dataset_name):
+        if dataset_name == "mnist":
+            return 60000
+        elif dataset_name == "cifar10":
+            return 50000
+        
 
     def round(self):
         sample_clients = self.selection()
@@ -144,7 +209,7 @@ class LotteryServer(Server):
 
         #todo
         #use openlth test to get accuracy 
-        testloader = fl_model.get_testloader(self.config.lottery_args.dataset_name, self.server_testset)  
+        testloader = get_testloader(self.config.lottery_args.dataset_name, self.server_indices)  
         accuracy = fl_model.test(self.model, testloader)
 
         logging.info('Average accuracy: {:.2f}%\n'.format(100 * accuracy))
