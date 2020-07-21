@@ -4,7 +4,8 @@ import numpy as np
 import pickle
 import random
 import sys
-from threading import Thread
+from threading import Thread, get_ident
+
 import torch
 import torchvision
 from server import Server
@@ -86,7 +87,7 @@ class LotteryServer(Server):
 
         if torch.is_tensor(self.labels[0]):
             self.labels = [label.item() for label in self.labels]
-            
+
         self.labels = list(set(self.labels))
         
         
@@ -185,9 +186,14 @@ class LotteryServer(Server):
 
         self.configuration(sample_clients)
 
-        threads = [Thread(target=client.run) for client in sample_clients]
-        [t.start() for t in threads]
-        [t.join() for t in threads]
+        threads = list()
+        for client in sample_clients:
+            t = Thread(target=client.run)
+            threads.append(t)
+            
+        for t in threads:
+            t.start()
+            t.join()
 
         reports = self.reporting(sample_clients)
 
