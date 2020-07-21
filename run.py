@@ -29,7 +29,7 @@ def main():
 
     # Set logging
     logging.basicConfig(filename=LOG_FILE, 
-                        format='[%(levelname)s][%(asctime)s]: %(message)s', 
+                        format='[%(threadName)s][%(asctime)s]: %(message)s', 
                         level=getattr(logging, args.log.upper()), 
                         datefmt='%H:%M:%S')
 
