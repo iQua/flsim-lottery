@@ -30,7 +30,7 @@ class LotteryServer(Server):
         logging.info('Booting {} server...'.format(self.config.server))
 
         model_path = self.config.paths.model
-        total_clients = self.config.clients.total
+        
 
         # Add fl_model to import path
         sys.path.append(model_path)
@@ -40,7 +40,7 @@ class LotteryServer(Server):
 
         # Set up simulated server
         self.load_model()
-        self.make_clients(total_clients)
+        self.make_clients()
 
 
 
@@ -64,25 +64,22 @@ class LotteryServer(Server):
             self.saved_reports = {}
             self.save_reports(0, []) 
 
-    def make_clients(self, num_clients):
+    def make_clients(self):
 
         clients = []
         
-        for client_id in range(num_clients):
-
-            if self.loading == "static":
-                dataset_indices = self.id_index_dict[client_id]
-            if self.loading == "dynamic":
-                id_list = list(range(self.config.clients.per_round))
-                i = random.choice(id_list)
-                id_list.remove(i)
-                dataset_indices = self.id_index_dict[i]
+        for client_id in range(self.config.clients.total):
             
-            new_client = LTHClient(client_id, dataset_indices)
+            new_client = LTHClient(client_id, self.config)
             clients.append(new_client)
-        
+
+
         logging.info('Total clients: {}'.format(len(clients)))
+        
+        
+            
         self.clients = clients
+
 
     
     def generate_dataset_index(self):
@@ -95,8 +92,7 @@ class LotteryServer(Server):
         
         self.labels = list(set(self.labels))
         
-        print(self.labels)
-
+        
         self.label_idx_dict = {}
         
         server_split = self.config.data.server_split
@@ -145,6 +141,7 @@ class LotteryServer(Server):
                 end = num_per_client * (i+1)
 
                 self.id_index_dict[i].extend(idx[beg:end])
+
     
     def get_indices(self, dataset,label):
         indices =  []
@@ -207,8 +204,6 @@ class LotteryServer(Server):
         self.save_model(self.model, self.config.paths.model)
 
 
-        #todo
-        #use openlth test to get accuracy 
         testloader = get_testloader(self.config.lottery_args.dataset_name, self.server_indices)  
         accuracy = fl_model.test(self.model, testloader)
 
@@ -220,10 +215,45 @@ class LotteryServer(Server):
 
     def configuration(self, sample_clients):
 
-        #todo: check if need to add loading
+        #for dynamic 
+        id_list = list(range(self.config.clients.per_round))
 
         for client in sample_clients:
-            config = self.config
-            client.configure(config)
+            client.set_task(self.config.fl.task)
+            client.set_mode(self.config.model)
+
+            if self.loading == "static":
+                dataset_indices = self.id_index_dict[client.client_id]
+            
+            if self.loading == "dynamic":
+                i = random.choice(id_list)
+                id_list.remove(i)
+                dataset_indices = self.id_index_dict[i]
+
+            
+            client.set_data_indices(dataset_indices)
+            
+        if self.config.clients.display_data_distribution:
+            self.display_data_distribution(sample_clients[0])
 
     
+    def display_data_distribution(self, client):
+        
+        dataset_indices = client.dataset_indices
+
+        label_cnt = []
+        for i in range(len(self.labels)):
+            tot_idx = set(self.label_idx_dict[i])
+            intersection = tot_idx.intersection(dataset_indices)
+            label_cnt.append(len(intersection))
+
+        tot_num = sum(label_cnt)
+        if self.config.data.IID:
+            logging.info(f'Total {tot_num} data in one client, {label_cnt[0]} for one label.')
+
+        else:
+            pref_num = max(label_cnt)
+            bias = round(pref_num / tot_num,2)
+            logging.info(f'Total {tot_num} data in one client, label {label_cnt.index(pref_num)} has {bias} of total data.')
+            
+            

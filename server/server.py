@@ -150,6 +150,7 @@ class Server(object):
             logging.info('**** Round {}/{} ****'.format(round, rounds))
 
             self.config.lottery_args.round_num = round
+            self.config.lottery_args.global_model_path = self.config.paths.model + '/global'
 
             # Run the federated learning round
             accuracy = self.round()

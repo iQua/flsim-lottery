@@ -1,10 +1,11 @@
 {
     "clients": {
         "total": 100,
-        "per_round": 1,
+        "per_round": 2,
         "label_distribution": "uniform",
         "do_test": false,
-        "test_partition": 0.2
+        "test_partition": 0.2,
+        "display_data_distribution": true
     },
     "data": {
         "loading": "static",
@@ -78,7 +79,6 @@
         "pruning_fraction": 0.2,
         "pruning_layers_to_ignore": null,
         "client_num": 100,
-        "bias_fraction": 0,
         "client_id": 0,
         "round_num": 5,
         "index_list": null,

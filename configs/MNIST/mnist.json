@@ -17,7 +17,7 @@
         "epochs": 5,
         "batch_size": 10
     },
-    "model": "MNIST",
+    "model": "train",
     "paths": {
         "data": "./data",
         "model": "./models"
