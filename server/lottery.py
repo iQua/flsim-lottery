@@ -84,10 +84,9 @@ class LotteryServer(Server):
 
         self.labels = dataset.targets
 
-        for label in self.labels:
-            if torch.is_tensor(label):
-                label = label.item()
-        
+        if torch.is_tensor(self.labels[0]):
+            self.labels = [label.item() for label in self.labels]
+            
         self.labels = list(set(self.labels))
         
         
@@ -217,7 +216,7 @@ class LotteryServer(Server):
         #for dynamic 
         id_list = list(range(self.config.clients.per_round))
 
-        print(self.id_index_dict.keys())
+
         for client in sample_clients:
             
             if self.loading == "static":
