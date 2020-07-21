@@ -21,10 +21,7 @@
     },
     "federated_learning": {
         "rounds": 200,
-        "target_accuracy": 0.95,
-        "task": "train",
-        "epochs": 5,
-        "batch_size": 10
+        "target_accuracy": 0.95
     },
     "paths": {
         "data": "./data",

@@ -42,11 +42,7 @@ class LTHClient(Client):
         
         self.dataset_indices = dataset_indices
     
-    def set_task(self, task):
-        self.task = task
 
-    def set_mode(self, mode):
-        self.mode = mode
 
     def train(self):
         
@@ -54,35 +50,40 @@ class LTHClient(Client):
 
         self.configure()
         
-            #get lotteryRunner
-            
-        lottery_runner = runner_registry.get(
+        lth_runner = runner_registry.get(
             self.args.subcommand).create_from_args(self.args)
         
-            #run lottery
-        self.platform.run_job(lottery_runner.run)
+        #run lottery
+        self.platform.run_job(lth_runner.run)
         
-        total_levels = self.args.levels
-        target_level = total_levels
 
         epoch_num = int(self.args.training_steps[0:-2])
         
-        lottery_folder = lottery_runner.desc.lottery_saved_folder
-        path_to_lottery = os.path.join(lottery_folder, 
-                        f'replicate_{lottery_runner.replicate}', 
+        data_folder = lth_runner.desc.data_saved_folder
+
+        if "levels" in self.args:
+            #lottery mode
+            total_levels = self.args.levels
+            target_level = total_levels
+            path_to_model = os.path.join(data_folder, 
+                        f'replicate_{lth_runner.replicate}', 
                         f'level_{target_level}', 'main', 
                         f'model_ep{epoch_num}_it0.pth')
         
+        else:
+            path_to_model = os.path.join(data_folder, 
+                        f'replicate_{lth_runner.replicate}', 'main', 
+                        f'model_ep{epoch_num}_it0.pth')
         
 
 
         #init the model
         self.model = models_registry.get(
-            lottery_runner.desc.model_hparams, 
-            outputs=lottery_runner.desc.train_outputs)
+            lth_runner.desc.model_hparams, 
+            outputs=lth_runner.desc.train_outputs)
 
         #load lottery
-        self.model.load_state_dict(torch.load(path_to_lottery))
+        self.model.load_state_dict(torch.load(path_to_model))
         weights = extract_weights(self.model)
 
         self.report = Report(self)

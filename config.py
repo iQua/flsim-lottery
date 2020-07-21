@@ -49,18 +49,6 @@ class Config(object):
                   for i, field in enumerate(fields)]
         self.fl = namedtuple('fl', fields)(*params)
 
-        # -- Model --
-        self.model = config['model']
-
-        # -- Paths --
-        fields = ['data', 'model', 'reports']
-        defaults = ('./data', './models', None)
-        params = [config['paths'].get(field, defaults[i])
-                  for i, field in enumerate(fields)]
-        # Set specific model path
-        params[fields.index('model')] += '/' + self.model
-
-        self.paths = namedtuple('paths', fields)(*params)
 
         # -- Server --
         self.server = config['server']
@@ -74,3 +62,13 @@ class Config(object):
             
         # load arguments from config
         self.lottery_args = load_parser(self.lottery) 
+
+         # -- Paths --
+        fields = ['data', 'model', 'reports']
+        defaults = ('./data', './models', None)
+        params = [config['paths'].get(field, defaults[i])
+                  for i, field in enumerate(fields)]
+        # Set specific model path
+        params[fields.index('model')] += '/' + self.lottery_args.model_name
+
+        self.paths = namedtuple('paths', fields)(*params)

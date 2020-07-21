@@ -1,5 +1,5 @@
 import client
-#import load_data
+import os
 import logging
 import numpy as np
 import pickle
@@ -347,7 +347,10 @@ class Server(object):
         client.set_data(data, self.config)
 
     def save_model(self, model, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
         path += '/global'
+        
         torch.save(model.state_dict(), path)
         logging.info('Saved global model: {}'.format(path))
 

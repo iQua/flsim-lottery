@@ -73,13 +73,9 @@ class LotteryServer(Server):
             new_client = LTHClient(client_id, self.config)
             clients.append(new_client)
 
-
         logging.info('Total clients: {}'.format(len(clients)))
-        
-        
             
         self.clients = clients
-
 
     
     def generate_dataset_index(self):
@@ -88,7 +84,9 @@ class LotteryServer(Server):
 
         self.labels = dataset.targets
 
-        self.labels = [label.item() for label in self.labels if torch.is_tensor((label))]
+        for label in self.labels:
+            if torch.is_tensor(label):
+                label = label.item()
         
         self.labels = list(set(self.labels))
         
@@ -101,7 +99,6 @@ class LotteryServer(Server):
         for label in self.labels:
 
             label_idx = self.get_indices(dataset, label)
-            #label_idx = dataset.targets==label
 
             random.shuffle(label_idx)
             
@@ -114,6 +111,7 @@ class LotteryServer(Server):
        
         #get id_index_list
         self.loading = self.config.data.loading
+
         if self.loading == "dynamic":
             self.client_num = self.config.clients.per_round
             
@@ -134,6 +132,7 @@ class LotteryServer(Server):
 
             for i in range(self.client_num):
 
+
                 if i not in self.id_index_dict.keys():
                     self.id_index_dict[i] = []
 
@@ -141,6 +140,7 @@ class LotteryServer(Server):
                 end = num_per_client * (i+1)
 
                 self.id_index_dict[i].extend(idx[beg:end])
+            
 
     
     def get_indices(self, dataset,label):
@@ -172,7 +172,6 @@ class LotteryServer(Server):
 
         return client_idx
         
-
 
     @staticmethod  
     def get_dataset_num(dataset_name):
@@ -218,10 +217,9 @@ class LotteryServer(Server):
         #for dynamic 
         id_list = list(range(self.config.clients.per_round))
 
+        print(self.id_index_dict.keys())
         for client in sample_clients:
-            client.set_task(self.config.fl.task)
-            client.set_mode(self.config.model)
-
+            
             if self.loading == "static":
                 dataset_indices = self.id_index_dict[client.client_id]
             

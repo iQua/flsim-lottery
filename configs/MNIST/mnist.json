@@ -1,26 +1,76 @@
 {
     "clients": {
         "total": 100,
-        "per_round": 10
+        "per_round": 5,
+        "label_distribution": "uniform",
+        "do_test": false,
+        "test_partition": 0.2,
+        "display_data_distribution": true
     },
     "data": {
         "loading": "static",
         "partition": {
-            "size": 600
+            "size": 600,
+            "range": [
+                50,
+                200
+            ],
+        "server_split": 0.1
         },
         "IID": true
     },
     "federated_learning": {
-        "rounds": 10000,
-        "target_accuracy": 0.99,
-        "task": "train",
-        "epochs": 5,
-        "batch_size": 10
+        "rounds": 200,
+        "target_accuracy": 0.95
     },
-    "model": "train",
     "paths": {
         "data": "./data",
-        "model": "./models"
+        "model": "./models",
+        "reports": "reports.pkl"
     },
-    "server": "basic"
+    "server": "lth",
+    "lottery": {
+        "subcommand": "train",
+        "platform": "local",
+        "display_output_location": false,
+        "num_workers": 0,
+        "replicate": 1,
+        "default_hparams": null,
+        "quiet": false,
+        "evaluate_only_at_end": false,
+        "rewinding_steps": null,
+        "pretrain": false,
+        "dataset_name": "mnist",
+        "batch_size": 32,
+        "do_not_augment": false,
+        "transformation_seed": null,
+        "subsample_fraction": null,
+        "random_labels_fraction": null,
+        "unsupervised_labels": null,
+        "blur_factor": null,
+        "model_name": "mnist_lenet_300_100",
+        "model_init": "kaiming_normal",
+        "batchnorm_init": "uniform",
+        "batchnorm_frozen": false,
+        "output_frozen": false,
+        "others_frozen": false,
+        "others_frozen_exceptions": null,
+        "optimizer_name": "adam",
+        "lr": 1.2e-3,
+        "training_steps": "2ep",
+        "data_order_seed": null,
+        "momentum": null,
+        "nesterov_momentum": null,
+        "milestone_steps": null,
+        "gamma": null,
+        "warmup_steps": null,
+        "weight_decay": null,
+        "apex_fp16": false,
+        "client_num": 100,
+        "client_id": 0,
+        "round_num": 5,
+        "index_list": null,
+        "global_model_path": null
+        
+    }
 }
