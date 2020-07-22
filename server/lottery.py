@@ -7,6 +7,7 @@ import sys
 from threading import Thread, get_ident
 
 import torch
+import json
 import torchvision
 from server import Server
 
@@ -190,31 +191,63 @@ class LotteryServer(Server):
         for client in sample_clients:
             t = Thread(target=client.run)
             threads.append(t)
-            
+
         for t in threads:
             t.start()
             t.join()
 
-        reports = self.reporting(sample_clients)
-
-        logging.info('Aggregating updates')
-        updated_weights = self.aggregation(reports)
-
-        fl_model.load_weights(self.model, updated_weights)
-
-        if self.config.paths.reports:
-            self.save_reports(round, reports)
         
+        testloader = get_testloader(self.config.lottery_args.dataset_name, self.server_indices) 
+        reports = self.reporting(sample_clients)
+        #get every client path
+        client_paths = [client.data_folder for client in sample_clients]
+
+        tot_level = self.config.lottery_args.levels + 1
+        ep_num = int(self.config.lottery_args.training_steps[0:-2])
+
+        accuracy_dict = {}
+        #for loop
+        for i in range(tot_level):
+            
+            weights = []
+            #load path to model 
+            for client_path in client_paths:
+                path = os.path.join(client_path, f'level_{i}', 'main', 
+                        f'model_ep{ep_num}_it0.pth')
+                base_model = self.model
+                base_model.load_state_dict(torch.load(path))
+                base_model.eval()
+                weight = fl_model.extract_weights(base_model)
+                weights.append(weight)
+
+            #aggregation
+            updated_weights = self.federated_averaging(reports, weights)
+
+            #test accuracy 
+            fl_model.load_weights(base_model, updated_weights)
+            accuracy = fl_model.test(base_model, testloader)
+
+            accuracy_dict[i] = accuracy
+
+            model_path = os.path.join(self.global_model_path, 'global')
+            if not os.path.exists(model_path):
+                os.makedirs(model_path)
+            test_model_path=model_path+ f'/round_{i}_model.pth'
+            torch.save(base_model.state_dict(), test_model_path)        
+
+        with open(os.path.join(self.global_model_path, 'accuracy.json'), 'w') as fp:
+            json.dump(accuracy_dict, fp) 
+
+        best_level = max(accuracy_dict, key=accuracy_dict.get)
+        best_path = os.path.join(self.global_model_path, 'global', f'level_{best_level}_model.pth')
+
+        self.model.load_state_dict(torch.load(best_path))
+        self.model.eval()
         self.save_model(self.model, self.config.paths.model)
+        accuracy = accuracy_dict[best_level]
+        logging.info('Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
 
-
-        testloader = get_testloader(self.config.lottery_args.dataset_name, self.server_indices)  
-        accuracy = fl_model.test(self.model, testloader)
-
-        logging.info('Average accuracy: {:.2f}%\n'.format(100 * accuracy))
         return accuracy
-
-
 
 
     def configuration(self, sample_clients):
@@ -259,4 +292,47 @@ class LotteryServer(Server):
             bias = round(pref_num / tot_num,2)
             logging.info(f'Total {tot_num} data in one client, label {label_cnt.index(pref_num)} has {bias} of total data.')
             
-            
+
+    def extract_client_updates(self, weights):
+
+        # Calculate updates from weights
+        updates = []
+        for weight in weights:
+            update = []
+            for i, (name, weight) in enumerate(weight):
+                bl_name, baseline = self.baseline_weights[i]
+
+                # Ensure correct weight is being updated
+                assert name == bl_name
+
+                # Calculate update
+                delta = weight - baseline
+                update.append((name, delta))
+            updates.append(update)
+
+        return updates
+
+    def federated_averaging(self, reports, weights):
+        
+        # Extract updates from reports
+        updates = self.extract_client_updates(weights)
+
+        # Extract total number of samples
+        total_samples = sum([report.num_samples for report in reports])
+
+        # Perform weighted averaging
+        avg_update = [torch.zeros(x.size())  # pylint: disable=no-member
+                      for _, x in updates[0]]
+        for i, update in enumerate(updates):
+            num_samples = reports[i].num_samples
+            for j, (_, delta) in enumerate(update):
+                # Use weighted average by number of samples
+                avg_update[j] += delta * (num_samples / total_samples)
+
+
+        # Load updated weights into model
+        updated_weights = []
+        for i, (name, weight) in enumerate(self.baseline_weights):
+            updated_weights.append((name, weight + avg_update[i]))
+
+        return updated_weights

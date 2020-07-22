@@ -151,6 +151,7 @@ class Server(object):
 
             self.config.lottery_args.round_num = round
             self.config.lottery_args.global_model_path = self.config.paths.model + '/global'
+            self.global_model_path = os.path.join("/mnt/open_lth_data", str(round))
 
             # Run the federated learning round
             accuracy = self.round()

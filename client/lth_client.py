@@ -59,21 +59,20 @@ class LTHClient(Client):
 
         epoch_num = int(self.args.training_steps[0:-2])
         
-        data_folder = lth_runner.desc.data_saved_folder
+        self.data_folder = os.path.join(lth_runner.desc.data_saved_folder,
+                                        f'replicate_{lth_runner.replicate}')
 
         if "levels" in self.args:
             #lottery mode
             total_levels = self.args.levels
             target_level = total_levels
-            path_to_model = os.path.join(data_folder, 
-                        f'replicate_{lth_runner.replicate}', 
+            path_to_model = os.path.join(self.data_folder,   
                         f'level_{target_level}', 'main', 
                         f'model_ep{epoch_num}_it0.pth')
         
         else:
-            path_to_model = os.path.join(data_folder, 
-                        f'replicate_{lth_runner.replicate}', 'main', 
-                        f'model_ep{epoch_num}_it0.pth')
+            path_to_model = os.path.join(self.data_folder, 
+                         'main', f'model_ep{epoch_num}_it0.pth')
         
 
 
