@@ -29,8 +29,9 @@ class LTHClient(Client):
         Initialize open_lth
         """
         super().__init__(client_id)
-        self.client_id = client_id
+        
         self.args = config.lottery_args
+        
 
         
 
@@ -85,7 +86,7 @@ class LTHClient(Client):
         self.model.load_state_dict(torch.load(path_to_model))
         weights = extract_weights(self.model)
 
-        self.report = Report(self)
+        
         #set dataset number 
         self.report.set_num_samples(len(self.dataset_indices))
         self.report.weights = weights

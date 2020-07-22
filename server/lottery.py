@@ -4,7 +4,8 @@ import numpy as np
 import pickle
 import random
 import sys
-from threading import Thread, get_ident
+from threading import Thread
+from multiprocessing import Process
 
 import torch
 import json
@@ -187,19 +188,14 @@ class LotteryServer(Server):
 
         self.configuration(sample_clients)
 
-        threads = list()
-        for client in sample_clients:
-            t = Thread(target=client.run)
-            threads.append(t)
-
-        for t in threads:
-            t.start()
-            t.join()
-
+        processes = [Process(target=client.run) for client in sample_clients]
+        [p.start() for p in processes]
+        [p.join() for p in processes]
         
         testloader = get_testloader(self.config.lottery_args.dataset_name, self.server_indices) 
-        reports = self.reporting(sample_clients)
+        
         #get every client path
+        
         client_paths = [client.data_folder for client in sample_clients]
 
         tot_level = self.config.lottery_args.levels + 1
@@ -221,6 +217,7 @@ class LotteryServer(Server):
                 weights.append(weight)
 
             #aggregation
+            reports = self.reporting(sample_clients)
             updated_weights = self.federated_averaging(reports, weights)
 
             #test accuracy 
@@ -232,7 +229,7 @@ class LotteryServer(Server):
             model_path = os.path.join(self.global_model_path, 'global')
             if not os.path.exists(model_path):
                 os.makedirs(model_path)
-            test_model_path=model_path+ f'/round_{i}_model.pth'
+            test_model_path=model_path+ f'/level_{i}_model.pth'
             torch.save(base_model.state_dict(), test_model_path)        
 
         with open(os.path.join(self.global_model_path, 'accuracy.json'), 'w') as fp:
