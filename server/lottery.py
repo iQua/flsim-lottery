@@ -83,7 +83,6 @@ class LotteryServer(Server):
         warmup_client = LTHClient(-1, self.config)
         warmup_client.download_datasets()
 
-        exit(0)
     
     def generate_dataset_index(self):
         
