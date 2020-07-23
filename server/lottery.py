@@ -34,7 +34,6 @@ class LotteryServer(Server):
 
         model_path = self.config.paths.model
         
-
         # Add fl_model to import path
         sys.path.append(model_path)
 
@@ -80,6 +79,11 @@ class LotteryServer(Server):
             
         self.clients = clients
 
+        logging.info('Download datasets if not exist...')
+        warmup_client = LTHClient(-1, self.config)
+        warmup_client.download_datasets()
+
+        exit(0)
     
     def generate_dataset_index(self):
         

@@ -19,8 +19,6 @@ parser.add_argument('-l', '--log', type=str, default='INFO',
 args = parser.parse_args()
 
 
-
-
 def main():
     """Run a federated learning simulation."""
 
@@ -46,6 +44,7 @@ def main():
         "magavg": server.MagAvgServer(fl_config),
         "lth": server.LotteryServer(fl_config) 
     }[fl_config.server]
+    
     fl_server.boot()
 
     # Run federated learning
