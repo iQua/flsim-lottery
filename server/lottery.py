@@ -188,14 +188,17 @@ class LotteryServer(Server):
 
         self.configuration(sample_clients)
 
-        processes = [Process(target=client.run) for client in sample_clients]
-        [p.start() for p in processes]
-        [p.join() for p in processes]
+        threads = [Thread(target=client.run) for client in sample_clients]
+        for t in threads:
+            t.start()
+            t.join()
         
-        testloader = get_testloader(self.config.lottery_args.dataset_name, self.server_indices) 
+        self.testloader = get_testloader(self.config.lottery_args.dataset_name, self.server_indices) 
         
-        #get every client path
-        
+        #return accuracy
+        return self.test_global_model(sample_clients)
+
+    def test_global_model(self, sample_clients):
         client_paths = [client.data_folder for client in sample_clients]
 
         tot_level = self.config.lottery_args.levels + 1
@@ -206,23 +209,26 @@ class LotteryServer(Server):
         for i in range(tot_level):
             
             weights = []
+            masks = []
             #load path to model 
             for client_path in client_paths:
-                path = os.path.join(client_path, f'level_{i}', 'main', 
+                weight_path = os.path.join(client_path, f'level_{i}', 'main', 
                         f'model_ep{ep_num}_it0.pth')
-                base_model = self.model
-                base_model.load_state_dict(torch.load(path))
-                base_model.eval()
-                weight = fl_model.extract_weights(base_model)
+                mask_path = os.path.join(client_path, f'level_{i}', 'main', 
+                        f'mask.pth')
+                weight = self.get_model_weight(weight_path, True)
+                mask = self.get_model_weight(mask_path, False)
                 weights.append(weight)
+                masks.append(mask)
 
             #aggregation
             reports = self.reporting(sample_clients)
-            updated_weights = self.federated_averaging(reports, weights)
+            updated_weights = self.federated_averaging(reports, weights, masks)
 
             #test accuracy 
+            base_model = self.model
             fl_model.load_weights(base_model, updated_weights)
-            accuracy = fl_model.test(base_model, testloader)
+            accuracy = fl_model.test(base_model, self.testloader)
 
             accuracy_dict[i] = accuracy
 
@@ -234,18 +240,32 @@ class LotteryServer(Server):
 
         with open(os.path.join(self.global_model_path, 'accuracy.json'), 'w') as fp:
             json.dump(accuracy_dict, fp) 
-
+ 
+        
+        return self.get_global_model(accuracy_dict)
+    
+    def get_global_model(self, accuracy_dict):
+                
         best_level = max(accuracy_dict, key=accuracy_dict.get)
         best_path = os.path.join(self.global_model_path, 'global', f'level_{best_level}_model.pth')
 
         self.model.load_state_dict(torch.load(best_path))
         self.model.eval()
         self.save_model(self.model, self.config.paths.model)
+
         accuracy = accuracy_dict[best_level]
         logging.info('Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
 
         return accuracy
+        
+    def get_model_weight(self, path, strict):
 
+        model = self.model
+        model.load_state_dict(torch.load(path), strict=strict)
+        model.eval()
+        #weight: tensor
+        weight = fl_model.extract_weights(model)
+        return weight
 
     def configuration(self, sample_clients):
 
@@ -290,46 +310,70 @@ class LotteryServer(Server):
             logging.info(f'Total {tot_num} data in one client, label {label_cnt.index(pref_num)} has {bias} of total data.')
             
 
-    def extract_client_updates(self, weights):
+    def extract_client_updates(self, weights, masks):
 
-        # Calculate updates from weights
         updates = []
-        for weight in weights:
+        assert len(weights) == len(masks)
+        for k in range(len(weights)):
+            client_weight = weights[k]
+            client_mask = masks[k]
             update = []
-            for i, (name, weight) in enumerate(weight):
+            #for one client
+            for i, (name, weight) in enumerate(client_weight):
+                
                 bl_name, baseline = self.baseline_weights[i]
-
-                # Ensure correct weight is being updated
                 assert name == bl_name
-
-                # Calculate update
                 delta = weight - baseline
-                update.append((name, delta))
-            updates.append(update)
 
+                layer_mask = client_mask[i][1]
+
+                if torch.is_tensor(delta):
+                    delta = delta.numpy()
+                    layer_mask = layer_mask.numpy()
+                layer_update = np.multiply(delta, layer_mask)
+                    #update for this client
+                update.append((name, layer_update))
+                
+            updates.append(update)
+        
         return updates
 
-    def federated_averaging(self, reports, weights):
+    def get_total_sample(self, masks):
+
+        total_num = [torch.zeros(x.size()) for _,x in masks[0]]
+        for mask in masks:
+            for i, (_, mask) in enumerate(mask):
+                total_num[i]+= mask
+
+        return total_num
+
+
+    def federated_averaging(self, reports, weights, masks):
         
         # Extract updates from reports
-        updates = self.extract_client_updates(weights)
+        updates = self.extract_client_updates(weights, masks)
 
-        # Extract total number of samples
-        total_samples = sum([report.num_samples for report in reports])
+        # Extract layer mask 
+        tot_mask = self.get_total_sample(masks)
 
-        # Perform weighted averaging
-        avg_update = [torch.zeros(x.size())  # pylint: disable=no-member
+        avg_update = [torch.zeros(x.shape)  # pylint: disable=no-member
                       for _, x in updates[0]]
+
+        
         for i, update in enumerate(updates):
-            num_samples = reports[i].num_samples
             for j, (_, delta) in enumerate(update):
-                # Use weighted average by number of samples
-                avg_update[j] += delta * (num_samples / total_samples)
+                avg_update[j] += delta
+        
+        for i in range(len(avg_update)):
+            avg = avg_update[i].numpy()
+            num = tot_mask[i].numpy()            
+            avg_update[i] = np.divide(avg, num, out=np.zeros_like(avg), where=num!=0)
 
 
         # Load updated weights into model
         updated_weights = []
         for i, (name, weight) in enumerate(self.baseline_weights):
+
             updated_weights.append((name, weight + avg_update[i]))
 
         return updated_weights
