@@ -5,6 +5,8 @@ import logging
 import os
 import server
 import sys
+
+import pytz
 from datetime import datetime
 
 # sys.path.append("./client/open_lth")
@@ -25,7 +27,8 @@ def main():
     """Run a federated learning simulation."""
 
     #set up log file
-    LOG_FILE = datetime.now().strftime('./logs/log_%H_%M_%S_%d_%m_%Y.log')
+    tz_NY = pytz.timezone('America/New_York')
+    LOG_FILE = datetime.now(tz_NY).strftime('./logs/log_%H_%M_%S_%d_%m.log')
 
     # Set logging
     logging.basicConfig(filename=LOG_FILE, 
