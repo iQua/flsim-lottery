@@ -9,7 +9,6 @@ class Client(object):
 
     def __init__(self, client_id):
         self.client_id = client_id
-        self.data_folder = None
         self.report = Report(self)
 
     def __repr__(self):
@@ -79,16 +78,16 @@ class Client(object):
         # Create optimizer
         self.optimizer = fl_model.get_optimizer(self.model)
 
-    def run(self):
+    def run(self, queue=None):
         # Perform federated learning task
-        self.train()
+        self.train(queue)
 
     def get_report(self):
         # Report results to server.
         return self.upload(self.report)
 
     # Machine learning tasks
-    def train(self):
+    def train(self, queue=None):
         import fl_model  # pylint: disable=import-error
 
         logging.info('Training on client #{}'.format(self.client_id))

@@ -1,7 +1,7 @@
 {
     "clients": {
         "total": 100,
-        "per_round": 5,
+        "per_round": 2,
         "label_distribution": "uniform",
         "do_test": false,
         "test_partition": 0.2,
@@ -10,7 +10,7 @@
     "data": {
         "loading": "static",
         "partition": {
-            "size": 600,
+            "size": 100,
             "range": [
                 50,
                 200
@@ -42,7 +42,7 @@
         "default_hparams": null,
         "quiet": false,
         "evaluate_only_at_end": false,
-        "levels": 2,
+        "levels": 0,
         "rewinding_steps": null,
         "pretrain": false,
         "dataset_name": "mnist",

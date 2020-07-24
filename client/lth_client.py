@@ -60,7 +60,7 @@ class LTHClient(Client):
             dataset_hparams.dataset_name].Dataset.get_test_set()        
 
 
-    def train(self):
+    def train(self, queue=None):
         
         logging.info(f'training on client {self.client_id}')
 
@@ -72,7 +72,6 @@ class LTHClient(Client):
         #run lottery
         self.platform.run_job(lth_runner.run)
         
-
         epoch_num = int(self.args.training_steps[0:-2])
         
         self.data_folder = os.path.join(lth_runner.desc.data_saved_folder,
@@ -89,8 +88,6 @@ class LTHClient(Client):
         else:
             path_to_model = os.path.join(self.data_folder, 
                          'main', f'model_ep{epoch_num}_it0.pth')
-        
-
 
         #init the model
         self.model = models_registry.get(
@@ -101,11 +98,13 @@ class LTHClient(Client):
         self.model.load_state_dict(torch.load(path_to_model))
         weights = extract_weights(self.model)
 
-        
         #set dataset number 
         self.report.set_num_samples(len(self.dataset_indices))
         self.report.weights = weights
-    
+
+        import pickle
+        queue.put(pickle.dumps(weights))
+
 
     def test(self):
         pass

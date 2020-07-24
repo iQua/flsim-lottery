@@ -4,8 +4,10 @@ import numpy as np
 import pickle
 import random
 import sys
-from threading import Thread
-from multiprocessing import Process
+
+# from threading import Thread
+from multiprocessing import Process, Value, Lock, Queue
+from ctypes import c_wchar_p, c_int
 
 import torch
 import json
@@ -45,7 +47,6 @@ class LotteryServer(Server):
         self.make_clients()
 
 
-
     def load_model(self):
 
         model_path = self.config.paths.model
@@ -65,6 +66,7 @@ class LotteryServer(Server):
         if self.config.paths.reports:
             self.saved_reports = {}
             self.save_reports(0, []) 
+
 
     def make_clients(self):
 
@@ -189,17 +191,25 @@ class LotteryServer(Server):
     def round(self):
         sample_clients = self.selection()
 
+        # client_paths = Array(c_char_p, [b'']*len(sample_clients), lock=False)
+
         self.configuration(sample_clients)
 
-        processes = [Process(target=client.run) for client in sample_clients]
+        proc_queue = Queue()
+        
+        processes = [Process(target=client.run, args=(proc_queue,)) \
+            for client in sample_clients]
+
         [p.start() for p in processes]
         [p.join() for p in processes]
         
-        testloader = get_testloader(self.config.lottery_args.dataset_name, self.server_indices) 
+        testloader = get_testloader(
+            self.config.lottery_args.dataset_name, self.server_indices) 
         
         #get every client path
-        
-        client_paths = [client.data_folder for client in sample_clients]
+        print([proc_queue.get() for _ in sample_clients])
+        # client_paths = [ret[0] for ret in return_queue]
+        # reports = [ret[1] for ret in return_queue]
 
         tot_level = self.config.lottery_args.levels + 1
         ep_num = int(self.config.lottery_args.training_steps[0:-2])
@@ -211,8 +221,8 @@ class LotteryServer(Server):
             weights = []
             #load path to model 
             for client_path in client_paths:
-                path = os.path.join(client_path, f'level_{i}', 'main', 
-                        f'model_ep{ep_num}_it0.pth')
+                path = os.path.join(client_path, \
+                    f'level_{i}', 'main', f'model_ep{ep_num}_it0.pth')
                 base_model = self.model
                 base_model.load_state_dict(torch.load(path))
                 base_model.eval()
@@ -220,7 +230,7 @@ class LotteryServer(Server):
                 weights.append(weight)
 
             #aggregation
-            reports = self.reporting(sample_clients)
+            # reports = self.reporting(sample_clients)
             updated_weights = self.federated_averaging(reports, weights)
 
             #test accuracy 
