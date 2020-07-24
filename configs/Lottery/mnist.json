@@ -3,12 +3,10 @@
         "total": 100,
         "per_round": 2,
         "label_distribution": "uniform",
-        "do_test": false,
-        "test_partition": 0.2,
         "display_data_distribution": true
     },
     "data": {
-        "loading": "static",
+        "loading": "dynamic",
         "partition": {
             "size": 100,
             "range": [
@@ -17,15 +15,12 @@
             ],
         "server_split": 0.1
         },
-        "IID": false,
-        "bias": {
-            "primary": 0.8,
-            "secondary": false
-        }
+        "IID": true
     },
     "federated_learning": {
         "rounds": 200,
-        "target_accuracy": 0.95
+        "mode": "normal",
+        "target_accuracy": 0.96
     },
     "paths": {
         "data": "./data",
@@ -46,7 +41,7 @@
         "rewinding_steps": null,
         "pretrain": false,
         "dataset_name": "mnist",
-        "batch_size": 32,
+        "batch_size": 60,
         "do_not_augment": false,
         "transformation_seed": null,
         "subsample_fraction": null,
@@ -62,7 +57,7 @@
         "others_frozen_exceptions": null,
         "optimizer_name": "adam",
         "lr": 1.2e-3,
-        "training_steps": "5ep",
+        "training_steps": "1ep",
         "data_order_seed": null,
         "momentum": null,
         "nesterov_momentum": null,
@@ -78,7 +73,8 @@
         "client_id": 0,
         "round_num": 5,
         "index_list": null,
-        "global_model_path": null
+        "global_model_path": null,
+        "prefix_time": null
         
     }
 }

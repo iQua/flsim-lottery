@@ -17,9 +17,8 @@ class Config(object):
         config = self.config
 
         # -- Clients --
-        fields = ['total', 'per_round', 'label_distribution',
-                  'do_test', 'test_partition', 'display_data_distribution']
-        defaults = (0, 0, 'uniform', False, None, False)
+        fields = ['total', 'per_round', 'label_distribution', 'display_data_distribution']
+        defaults = (0, 0, 'uniform', False)
         params = [config['clients'].get(field, defaults[i])
                   for i, field in enumerate(fields)]
         self.clients = namedtuple('clients', fields)(*params)
@@ -43,8 +42,8 @@ class Config(object):
             self.loader = 'shard'
 
         # -- Federated learning --
-        fields = ['rounds', 'target_accuracy', 'task', 'epochs', 'batch_size']
-        defaults = (0, None, 'train', 0, 0)
+        fields = ['rounds', 'target_accuracy', 'mode']
+        defaults = (0, None, "normal")
         params = [config['federated_learning'].get(field, defaults[i])
                   for i, field in enumerate(fields)]
         self.fl = namedtuple('fl', fields)(*params)
