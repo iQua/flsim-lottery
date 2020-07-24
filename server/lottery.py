@@ -207,8 +207,7 @@ class LotteryServer(Server):
             self.config.lottery_args.dataset_name, self.server_indices) 
         
         #get every client path
-        print([proc_queue.get() for _ in sample_clients])
-        # client_paths = [ret[0] for ret in return_queue]
+        client_paths = [proc_queue.get() for client in sample_clients]
         # reports = [ret[1] for ret in return_queue]
 
         tot_level = self.config.lottery_args.levels + 1
@@ -221,6 +220,7 @@ class LotteryServer(Server):
             weights = []
             #load path to model 
             for client_path in client_paths:
+                print(client_path)
                 path = os.path.join(client_path, \
                     f'level_{i}', 'main', f'model_ep{ep_num}_it0.pth')
                 base_model = self.model

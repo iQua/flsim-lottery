@@ -102,8 +102,7 @@ class LTHClient(Client):
         self.report.set_num_samples(len(self.dataset_indices))
         self.report.weights = weights
 
-        import pickle
-        queue.put(pickle.dumps(weights))
+        queue.put(self.data_folder)
 
 
     def test(self):
