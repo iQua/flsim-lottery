@@ -75,7 +75,8 @@
         "client_id": 0,
         "round_num": 5,
         "index_list": null,
-        "global_model_path": null
+        "global_model_path": null,
+        "prefix_time": null
         
     }
 }

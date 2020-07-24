@@ -19,7 +19,7 @@
     },
     "federated_learning": {
         "rounds": 200,
-        "mode": "mask",
+        "mode": "normal",
         "target_accuracy": 0.96
     },
     "paths": {
@@ -57,7 +57,7 @@
         "others_frozen_exceptions": null,
         "optimizer_name": "adam",
         "lr": 1.2e-3,
-        "training_steps": "3ep",
+        "training_steps": "1ep",
         "data_order_seed": null,
         "momentum": null,
         "nesterov_momentum": null,
@@ -73,7 +73,8 @@
         "client_id": 0,
         "round_num": 5,
         "index_list": null,
-        "global_model_path": null
+        "global_model_path": null,
+        "prefix_time": null
         
     }
 }

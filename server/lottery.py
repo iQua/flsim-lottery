@@ -195,16 +195,29 @@ class LotteryServer(Server):
         
         self.testloader = get_testloader(self.config.lottery_args.dataset_name, self.server_indices) 
         
-        #return accuracy
-        return self.test_global_model(sample_clients)
+        return self.get_global_model(sample_clients)
 
-    def test_global_model(self, sample_clients):
-        client_paths = [client.data_folder for client in sample_clients]
-
-        tot_level = self.config.lottery_args.levels + 1
-        ep_num = int(self.config.lottery_args.training_steps[0:-2])
+    def get_global_model(self, sample_clients):
+        
 
         reports = self.reporting(sample_clients)
+
+        train_mode = self.config.lottery_args.subcommand
+        if train_mode == "lottery":
+            return self.get_best_lottery(sample_clients, reports)
+        if train_mode == "train":
+            weights = [report.weight for report in reports]
+            updates = self.federated_averaging(reports, weights)
+            accuracy = self.test_model_accuracy(self.model, updates)
+            self.save_model(self.model, self.config.paths.model)
+            logging.info('Global accuracy: {:.2f}%\n'.format(100 * accuracy))
+            return accuracy
+
+    def get_best_lottery(self, sample_clients, reports):
+
+        client_paths = [client.data_folder for client in sample_clients]
+        tot_level = self.config.lottery_args.levels + 1
+        ep_num = int(self.config.lottery_args.training_steps[0:-2])
 
         accuracy_dict = {}
         #for loop
@@ -235,10 +248,7 @@ class LotteryServer(Server):
 
             #test accuracy 
             base_model = self.model
-            fl_model.load_weights(base_model, updated_weights)
-            accuracy = fl_model.test(base_model, self.testloader)
-
-            accuracy_dict[i] = accuracy
+            accuracy_dict[i] = self.test_model_accuracy(base_model, updated_weights)
 
             model_path = os.path.join(self.global_model_path, 'global')
             if not os.path.exists(model_path):
@@ -250,9 +260,16 @@ class LotteryServer(Server):
             json.dump(accuracy_dict, fp) 
  
         
-        return self.get_global_model(accuracy_dict)
-    
-    def get_global_model(self, accuracy_dict):
+        return self.get_best_global_model(accuracy_dict)
+
+    def test_model_accuracy(self, model, updated_weights):
+        fl_model.load_weights(model, updated_weights)
+        accuracy = fl_model.test(model, self.testloader)
+
+        return  accuracy  
+
+
+    def get_best_global_model(self, accuracy_dict):
                 
         best_level = max(accuracy_dict, key=accuracy_dict.get)
         best_path = os.path.join(self.global_model_path, 'global', f'level_{best_level}_model.pth')

@@ -9,6 +9,11 @@ from threading import Thread
 import torch
 import utils.dists as dists  # pylint: disable=no-name-in-module
 from utils.fl_model import load_weights, extract_weights # pylint: disable=no-name-in-module
+from datetime import datetime
+import pytz
+
+
+
 
 class Server(object):
     """Basic federated learning server."""
@@ -41,13 +46,11 @@ class Server(object):
             logging.info('Training: {} rounds\n'.format(rounds))
 
         # Perform rounds of federated learning
-        for round in range(1, rounds + 1):
-            logging.info('**** Round {}/{} ****'.format(round, rounds))
+        for round_id in range(1, rounds + 1):
+            logging.info('**** Round {}/{} ****'.format(round_id, rounds))
 
-            self.config.lottery_args.round_num = round
-            self.config.lottery_args.global_model_path = self.config.paths.model + '/global'
-            self.global_model_path = os.path.join("/mnt/open_lth_data", str(round))
-
+            self.set_params(round_id)
+        
             # Run the federated learning round
             accuracy = self.round()
 
@@ -60,6 +63,16 @@ class Server(object):
             with open(reports_path, 'wb') as f:
                 pickle.dump(self.saved_reports, f)
             logging.info('Saved reports: {}'.format(reports_path))
+
+    def set_params(self, round_id):
+
+        prefix_time = self.current_time()
+        self.config.lottery_args.round_num = round_id
+        self.config.lottery_args.global_model_path = self.config.paths.model + '/global'
+        self.config.lottery_args.client_num = self.config.clients.total
+        self.config.lottery_args.prefix_time = prefix_time
+        
+        self.global_model_path = os.path.join("/mnt/open_lth_data", prefix_time, str(round_id))
 
     def round(self):
         pass
@@ -144,29 +157,6 @@ class Server(object):
 
         return np.array(weight_vecs)
 
-    def set_client_data(self, client):
-        loader = self.config.loader
-
-        # Get data partition size
-        if loader != 'shard':
-            if self.config.data.partition.get('size'):
-                partition_size = self.config.data.partition.get('size')
-            elif self.config.data.partition.get('range'):
-                start, stop = self.config.data.partition.get('range')
-                partition_size = random.randint(start, stop)
-
-        # Extract data partition for client
-        if loader == 'basic':
-            data = self.loader.get_partition(partition_size)
-        elif loader == 'bias':
-            data = self.loader.get_partition(partition_size, client.pref)
-        elif loader == 'shard':
-            data = self.loader.get_partition()
-        else:
-            logging.critical('Unknown data loader type')
-
-        # Send data to client
-        client.set_data(data, self.config)
 
     def save_model(self, model, path):
         if not os.path.exists(path):
@@ -186,3 +176,9 @@ class Server(object):
         # Extract global weights
         self.saved_reports['w{}'.format(round)] = self.flatten_weights(
             extract_weights(self.model))
+
+
+    def current_time(self):
+        tz_NY = pytz.timezone('America/New_York') 
+        datetime_NY = datetime.now(tz_NY)
+        return datetime_NY.strftime("%H:%M:%S")
