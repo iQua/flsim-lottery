@@ -3,8 +3,6 @@
         "total": 100,
         "per_round": 2,
         "label_distribution": "uniform",
-        "do_test": false,
-        "test_partition": 0.2,
         "display_data_distribution": true
     },
     "data": {
@@ -21,7 +19,8 @@
     },
     "federated_learning": {
         "rounds": 200,
-        "target_accuracy": 0.95
+        "target_accuracy": 0.95,
+        "mode": "normal"
     },
     "paths": {
         "data": "./data",
