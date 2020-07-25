@@ -234,6 +234,7 @@ class LotteryServer(Server):
         ep_num = int(self.config.lottery_args.training_steps[0:-2])
 
         weights = []
+        
         for client_path in client_paths:
             weight_path = os.path.join(client_path, 'main', \
                 f'model_ep{ep_num}_it0.pth')
@@ -244,7 +245,7 @@ class LotteryServer(Server):
         updated_weights = self.federated_averaging(reports, weights)
 
         accuracy = self.test_model_accuracy(self.model, updated_weights)
-        
+
         logging.info('Global accuracy: {:.2f}%\n'.format(100 * accuracy))
 
         model_path = os.path.join(self.global_model_path, 'global')
