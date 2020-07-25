@@ -110,3 +110,4 @@ data/
 **/global
 ./logs
 .vscode/
+reports.pkl

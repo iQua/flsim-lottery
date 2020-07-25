@@ -52,7 +52,9 @@ class LotteryServer(Server):
         model_path = self.config.paths.model
 
         lottery_runner = runner_registry.get(
-            self.config.lottery_args.subcommand).create_from_args(self.config.lottery_args)
+            self.config.lottery_args.subcommand).create_from_args( \
+                self.config.lottery_args)
+
         #set up global model
         self.model = models_registry.get(
             lottery_runner.desc.model_hparams, 
@@ -112,10 +114,9 @@ class LotteryServer(Server):
             server_num = int(len(label_idx) * server_split)
 
             self.server_indices.extend(label_idx[:server_num])
+            self.label_idx_dict[self.labels.index(label)] = \
+                label_idx[server_num:]
 
-            self.label_idx_dict[self.labels.index(label)] = label_idx[server_num:]
-
-       
         #get id_index_list
         self.loading = self.config.data.loading
 
@@ -138,8 +139,6 @@ class LotteryServer(Server):
             num_per_client = client_idx[self.labels.index(label)]
 
             for i in range(self.client_num):
-
-
                 if i not in self.id_index_dict.keys():
                     self.id_index_dict[i] = []
 
@@ -149,7 +148,6 @@ class LotteryServer(Server):
                 self.id_index_dict[i].extend(idx[beg:end])
             
 
-    
     def get_indices(self, dataset,label):
         indices =  []
         for i in range(len(dataset.targets)):
@@ -164,8 +162,8 @@ class LotteryServer(Server):
         client_idx = []
         if self.config.data.IID:
             for label, idx in self.label_idx_dict.items():
-                client_idx.insert(self.labels.index(label), int(len(idx)/self.client_num))
-
+                client_idx.insert(
+                    self.labels.index(label), int(len(idx)/self.client_num))
         else:
             bias = self.config.data.bias["primary"]
             secondary = self.config.data.bias["secondary"]
@@ -175,7 +173,8 @@ class LotteryServer(Server):
             majority = int(total_majority / self.client_num)
 
             #for one client get partition
-            client_idx = get_partition(self.labels, majority, pref, bias, secondary)
+            client_idx = get_partition(
+                self.labels, majority, pref, bias, secondary)
 
         return client_idx
         
@@ -202,13 +201,15 @@ class LotteryServer(Server):
 
         [p.start() for p in processes]
         [p.join() for p in processes]
-        
-        testloader = get_testloader(
-            self.config.lottery_args.dataset_name, self.server_indices) 
-        
+                
         #get every client path
-        client_paths = [proc_queue.get() for client in sample_clients]
-        # reports = [ret[1] for ret in return_queue]
+        sample_client_dict = {
+            client.client_id: client for client in sample_clients}
+
+        while not proc_queue.empty():
+            client_id, data_folder, num_samples = proc_queue.get()
+            sample_client_dict[client_id].data_folder = data_folder
+            sample_client_dict[client_id].report.set_num_samples(num_samples)
 
         self.testloader = get_testloader(
             self.config.lottery_args.dataset_name, self.server_indices) 
@@ -217,18 +218,47 @@ class LotteryServer(Server):
 
 
     def get_global_model(self, sample_clients):
+
         reports = self.reporting(sample_clients)
 
         train_mode = self.config.lottery_args.subcommand
+
         if train_mode == "lottery":
             return self.get_best_lottery(sample_clients, reports)
         if train_mode == "train":
-            weights = [report.weight for report in reports]
-            updates = self.federated_averaging(reports, weights)
-            accuracy = self.test_model_accuracy(self.model, updates)
-            self.save_model(self.model, self.config.paths.model)
-            logging.info('Global accuracy: {:.2f}%\n'.format(100 * accuracy))
-            return accuracy
+            return self.get_train_model(sample_clients, reports)
+
+
+    def get_train_model(self, sample_clients, reports):
+        client_paths = [client.data_folder for client in sample_clients]
+        ep_num = int(self.config.lottery_args.training_steps[0:-2])
+
+        weights = []
+        for client_path in client_paths:
+            weight_path = os.path.join(client_path, 'main', \
+                f'model_ep{ep_num}_it0.pth')
+
+            weight = self.get_model_weight(weight_path, True)
+            weights.append(weight)
+
+        updated_weights = self.federated_averaging(reports, weights)
+
+        accuracy = self.test_model_accuracy(self.model, updated_weights)
+        
+        logging.info('Global accuracy: {:.2f}%\n'.format(100 * accuracy))
+
+        model_path = os.path.join(self.global_model_path, 'global')
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
+
+        torch.save(self.model.state_dict(), model_path+ f'/global_model.pth')
+
+        with open(
+            os.path.join(self.global_model_path, 'accuracy.json'), 'w') as fp:
+            json.dump(accuracy, fp) 
+
+        return accuracy
+        
 
     def get_best_lottery(self, sample_clients, reports):
 
@@ -238,8 +268,7 @@ class LotteryServer(Server):
 
         accuracy_dict = {}
         #for loop
-        for i in range(tot_level):
-            
+        for i in range(tot_level):      
             weights = []
             #load path to model 
             for client_path in client_paths:
@@ -258,14 +287,16 @@ class LotteryServer(Server):
                     mask = self.get_model_weight(mask_path, False)
                     masks.append(mask)
                 
-                updated_weights = self.federated_averaging_with_mask(reports, weights, masks)
+                updated_weights = self.federated_averaging_with_mask(
+                    reports, weights, masks)
             
             if self.config.fl.mode == "normal":
                 updated_weights = self.federated_averaging(reports, weights)
 
             #test accuracy 
             base_model = self.model
-            accuracy_dict[i] = self.test_model_accuracy(base_model, updated_weights)
+            accuracy_dict[i] = self.test_model_accuracy(
+                base_model, updated_weights)
 
             model_path = os.path.join(self.global_model_path, 'global')
             if not os.path.exists(model_path):
@@ -273,23 +304,25 @@ class LotteryServer(Server):
             test_model_path=model_path+ f'/level_{i}_model.pth'
             torch.save(base_model.state_dict(), test_model_path)        
 
-        with open(os.path.join(self.global_model_path, 'accuracy.json'), 'w') as fp:
+        with open(
+            os.path.join(self.global_model_path, 'accuracy.json'), 'w') as fp:
             json.dump(accuracy_dict, fp) 
  
-        
         return self.get_best_global_model(accuracy_dict)
+
 
     def test_model_accuracy(self, model, updated_weights):
         fl_model.load_weights(model, updated_weights)
         accuracy = fl_model.test(model, self.testloader)
 
-        return  accuracy  
+        return accuracy  
 
 
     def get_best_global_model(self, accuracy_dict):
                 
         best_level = max(accuracy_dict, key=accuracy_dict.get)
-        best_path = os.path.join(self.global_model_path, 'global', f'level_{best_level}_model.pth')
+        best_path = os.path.join(
+            self.global_model_path, 'global', f'level_{best_level}_model.pth')
 
         self.model.load_state_dict(torch.load(best_path))
         self.model.eval()
@@ -299,7 +332,8 @@ class LotteryServer(Server):
         logging.info('Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
 
         return accuracy
-        
+    
+
     def get_model_weight(self, path, strict):
 
         model = self.model
@@ -309,14 +343,14 @@ class LotteryServer(Server):
         weight = fl_model.extract_weights(model)
         return weight
 
+
     def configuration(self, sample_clients):
 
         #for dynamic 
         id_list = list(range(self.config.clients.per_round))
 
 
-        for client in sample_clients:
-            
+        for client in sample_clients:            
             if self.loading == "static":
                 dataset_indices = self.id_index_dict[client.client_id]
             
@@ -325,7 +359,6 @@ class LotteryServer(Server):
                 id_list.remove(i)
                 dataset_indices = self.id_index_dict[i]
 
-            
             client.set_data_indices(dataset_indices)
             
         if self.config.clients.display_data_distribution:
@@ -344,12 +377,14 @@ class LotteryServer(Server):
 
         tot_num = sum(label_cnt)
         if self.config.data.IID:
-            logging.info(f'Total {tot_num} data in one client, {label_cnt[0]} for one label.')
+            logging.info(
+                f'Total {tot_num} data in one client, {label_cnt[0]} for one label.')
 
         else:
             pref_num = max(label_cnt)
             bias = round(pref_num / tot_num,2)
-            logging.info(f'Total {tot_num} data in one client, label {label_cnt.index(pref_num)} has {bias} of total data.')
+            logging.info(
+                f'Total {tot_num} data in one client, label {label_cnt.index(pref_num)} has {bias} of total data.')
             
 
     def get_total_sample(self, masks):
@@ -401,6 +436,7 @@ class LotteryServer(Server):
             updated_weights.append((name, weight + avg_update[i]))
 
         return updated_weights
+
 
     def div0(self, a,b):
    

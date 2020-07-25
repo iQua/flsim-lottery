@@ -1,7 +1,7 @@
 {
     "clients": {
         "total": 100,
-        "per_round": 2,
+        "per_round": 3,
         "label_distribution": "uniform",
         "display_data_distribution": true
     },
@@ -74,7 +74,6 @@
         "round_num": 5,
         "index_list": null,
         "global_model_path": null,
-        "prefix_time": null
-        
+        "prefix_path": null
     }
 }

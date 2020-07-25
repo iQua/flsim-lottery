@@ -31,6 +31,7 @@ class LTHClient(Client):
         
         self.args = config.lottery_args
         self.dataset_indices = []
+        self.data_folder = ""
         
 
     def __repr__(self):
@@ -74,10 +75,11 @@ class LTHClient(Client):
         
         epoch_num = int(self.args.training_steps[0:-2])
         
-        self.data_folder = os.path.join(lth_runner.desc.data_saved_folder,
-                                        f'replicate_{lth_runner.replicate}')
+        self.data_folder = os.path.join(\
+            lth_runner.desc.data_saved_folder,
+            f'replicate_{lth_runner.replicate}')
 
-        if "levels" in self.args:
+        if self.args.subcommand == "lottery":
             #lottery mode
             total_levels = self.args.levels
             target_level = total_levels
@@ -102,7 +104,7 @@ class LTHClient(Client):
         self.report.set_num_samples(len(self.dataset_indices))
         self.report.weights = weights
 
-        queue.put(self.data_folder)
+        queue.put((self.client_id, self.data_folder, len(self.dataset_indices)))
 
 
     def test(self):
@@ -118,3 +120,5 @@ class LTHClient(Client):
 
         self.platform = platforms_registry.get(
             self.args.platform).create_from_args(self.args)
+
+        self.platform.root = self.args.prefix_path

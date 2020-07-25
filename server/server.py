@@ -12,14 +12,18 @@ from utils.fl_model import load_weights, extract_weights # pylint: disable=no-na
 from datetime import datetime
 import pytz
 
-
-
+def current_time():
+    tz_NY = pytz.timezone('America/New_York') 
+    datetime_NY = datetime.now(tz_NY)
+    return datetime_NY.strftime("%H:%M:%S")
 
 class Server(object):
     """Basic federated learning server."""
 
     def __init__(self, config):
         self.config = config
+        self.saved_reports = {}
+        self.prefix_time = current_time()
 
     # Set up server
     def boot(self):
@@ -31,7 +35,6 @@ class Server(object):
 
     def make_clients(self, num_clients):
         pass
-
 
     # Run federated learning
     def run(self):
@@ -66,16 +69,20 @@ class Server(object):
 
     def set_params(self, round_id):
 
-        prefix_time = self.current_time()
-        self.config.lottery_args.round_num = round_id
-        self.config.lottery_args.global_model_path = self.config.paths.model + '/global'
-        self.config.lottery_args.client_num = self.config.clients.total
-        self.config.lottery_args.prefix_time = prefix_time
         
-        self.global_model_path = os.path.join("/mnt/open_lth_data", prefix_time, str(round_id))
+        self.config.lottery_args.round_num = round_id
+        self.config.lottery_args.global_model_path = \
+            self.config.paths.model + '/global'
+        self.config.lottery_args.client_num = self.config.clients.total
+        
+        self.global_model_path = os.path.join(
+            "/mnt/open_lth_data", self.prefix_time, str(round_id))
+
+        self.config.lottery_args.prefix_path = os.path.join(
+            "/mnt/open_lth_data", self.prefix_time)
 
     def round(self):
-        pass
+        return 0
 
     # Federated learning phases
 
@@ -157,7 +164,6 @@ class Server(object):
 
         return np.array(weight_vecs)
 
-
     def save_model(self, model, path):
         if not os.path.exists(path):
             os.makedirs(path)
@@ -176,9 +182,3 @@ class Server(object):
         # Extract global weights
         self.saved_reports['w{}'.format(round)] = self.flatten_weights(
             extract_weights(self.model))
-
-
-    def current_time(self):
-        tz_NY = pytz.timezone('America/New_York') 
-        datetime_NY = datetime.now(tz_NY)
-        return datetime_NY.strftime("%H:%M:%S")
