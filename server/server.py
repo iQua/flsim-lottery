@@ -68,7 +68,6 @@ class Server(object):
             logging.info('Saved reports: {}'.format(reports_path))
 
     def set_params(self, round_id):
-
         
         self.config.lottery_args.round_num = round_id
         self.config.lottery_args.global_model_path = \
@@ -76,10 +75,13 @@ class Server(object):
         self.config.lottery_args.client_num = self.config.clients.total
         
         self.global_model_path = os.path.join(
-            "/mnt/open_lth_data", self.prefix_time, str(round_id))
+            "/mnt/open_lth_data", 
+            self.prefix_time+"-"+self.config.lottery_args.subcommand, 
+            str(round_id))
 
         self.config.lottery_args.prefix_path = os.path.join(
-            "/mnt/open_lth_data", self.prefix_time)
+            "/mnt/open_lth_data", 
+            self.prefix_time+"-"+self.config.lottery_args.subcommand)
 
     def round(self):
         return 0
