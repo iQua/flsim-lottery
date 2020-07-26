@@ -1,7 +1,7 @@
 {
     "clients": {
         "total": 100,
-        "per_round": 10,
+        "per_round": 3,
         "label_distribution": "uniform",
         "display_data_distribution": true
     },
@@ -20,7 +20,7 @@
     "federated_learning": {
         "rounds": 1000,
         "mode": "normal",
-        "target_accuracy": 0.99
+        "target_accuracy": 0.97
     },
     "paths": {
         "data": "./data",
@@ -37,7 +37,7 @@
         "default_hparams": null,
         "quiet": false,
         "evaluate_only_at_end": false,
-        "levels": 5,
+        "levels": 1,
         "rewinding_steps": null,
         "pretrain": false,
         "dataset_name": "mnist",
