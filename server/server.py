@@ -5,7 +5,8 @@ import numpy as np
 import pickle
 import random
 import sys
-from threading import Thread
+from shutil import copyfile
+
 import torch
 import utils.dists as dists  # pylint: disable=no-name-in-module
 from utils.fl_model import load_weights, extract_weights # pylint: disable=no-name-in-module
@@ -83,6 +84,10 @@ class Server(object):
             "/mnt/open_lth_data", 
             self.prefix_time+"-"+self.config.lottery_args.subcommand)
 
+        copyfile(self.config.paths, \
+            os.path.join("/mnt/open_lth_data",\
+                self.prefix_time+"-"+self.config.lottery_args.subcommand))
+ 
     def round(self):
         return 0
 
