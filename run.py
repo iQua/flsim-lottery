@@ -6,6 +6,7 @@ import os
 import server
 import sys
 
+import torch
 import pytz
 from datetime import datetime
 
@@ -58,4 +59,5 @@ def main():
 
 
 if __name__ == "__main__":
+    torch.multiprocessing.set_start_method("spawn")
     main()
