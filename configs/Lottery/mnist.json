@@ -1,14 +1,14 @@
 {
     "clients": {
         "total": 100,
-        "per_round": 5,
+        "per_round": 10,
         "label_distribution": "uniform",
         "display_data_distribution": true
     },
     "data": {
         "loading": "dynamic",
         "partition": {
-            "size": 100,
+            "size": 600,
             "range": [
                 50,
                 200
@@ -18,9 +18,9 @@
         "IID": true
     },
     "federated_learning": {
-        "rounds": 200,
+        "rounds": 1000,
         "mode": "normal",
-        "target_accuracy": 0.97
+        "target_accuracy": 0.99
     },
     "paths": {
         "data": "./data",
@@ -37,7 +37,7 @@
         "default_hparams": null,
         "quiet": false,
         "evaluate_only_at_end": false,
-        "levels": 1,
+        "levels": 5,
         "rewinding_steps": null,
         "pretrain": false,
         "dataset_name": "mnist",
