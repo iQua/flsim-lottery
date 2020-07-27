@@ -185,10 +185,10 @@ class LotteryServer(Server):
             
             pref = random.choice(self.labels)
             majority = int(tot_num * bias)
-
+            minority = tot_num - majority
             #for one client get partition
             client_idx = get_partition(
-                self.labels, majority, pref, bias, secondary)
+                self.labels, majority, minority, pref, bias, secondary)
 
         return client_idx
         

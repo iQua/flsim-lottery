@@ -33,15 +33,8 @@ def get_testloader(dataset_name, indices):
 
     return dataloader
 
-def get_partition(labels, majority, pref, bias, secondary):
+def get_partition(labels, majority, minority, pref, bias, secondary):
     # Get a non-uniform partition with a preference bias
-
-    bias = bias
-    secondary = secondary
-    labels = labels
-
-    # Calculate sizes of majorty and minority portions
-    minority = int(majority / bias * (1-bias))
 
     # Calculate number of minor labels
     len_minor_labels = len(labels) - 1
