@@ -1,7 +1,7 @@
 {
     "clients": {
         "total": 100,
-        "per_round": 5,
+        "per_round": 10,
         "label_distribution": "uniform",
         "display_data_distribution": true
     },
@@ -15,7 +15,11 @@
             ],
         "server_split": 0.1
         },
-        "IID": true
+        "IID": false,
+	"bias": {
+	    "primary": 0.8,
+	    "secondary": false
+	}
     },
     "federated_learning": {
         "rounds": 200,
