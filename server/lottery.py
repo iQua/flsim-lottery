@@ -10,6 +10,9 @@ from multiprocessing import Process, Value, Lock, Queue
 from ctypes import c_wchar_p, c_int
 
 import torch
+# torch.multiprocessing.set_start_method("spawn")
+import torch.multiprocessing as mp
+
 import json
 import torchvision
 from server import Server
@@ -196,7 +199,7 @@ class LotteryServer(Server):
 
         proc_queue = Queue()
         
-        processes = [Process(target=client.run, args=(proc_queue,)) \
+        processes = [mp.Process(target=client.run, args=(proc_queue,)) \
             for client in sample_clients]
 
         [p.start() for p in processes]

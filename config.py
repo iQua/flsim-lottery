@@ -7,6 +7,7 @@ class Config(object):
 
     def __init__(self, config):
         self.paths = ""
+        self.config_path = config
         # Load config file
         with open(config, 'r') as config:
             self.config = json.load(config)
