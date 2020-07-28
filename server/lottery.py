@@ -345,26 +345,6 @@ class LotteryServer(Server):
         accuracy = fl_model.test(model, self.testloader)
 
         return accuracy  
-
-
-    # def get_best_global_model(self, accuracy_dict):
-                
-    #     best_level = max(accuracy_dict, key=accuracy_dict.get)
-    #     best_path = os.path.join(
-    #         self.global_model_path, 'global', f'level_{best_level}_model.pth')
-
-    #     self.model.load_state_dict(torch.load(best_path))
-    #     self.model.eval()
-
-    #     # update static global model
-    #     self.save_model(self.model, self.static_global_model_path)
-    #     # backup global model to round directory
-    #     self.save_model(self.model, self.global_model_path_per_round)
-
-    #     accuracy = accuracy_dict[best_level]
-    #     logging.info('Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
-
-    #     return accuracy
     
 
     def get_model_weight(self, path, strict):
