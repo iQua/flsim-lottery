@@ -39,9 +39,12 @@ class LotteryServer(Server):
         # Add fl_model to import path
         sys.path.append(self.static_global_model_path)
 
-        #arrange data
-        self.generate_dataset_index()
-
+        #get server split and clients total indices
+        #server: server_indices, clients: label_idx_dict
+        self.generate_dataset_splits()
+        self.loading = self.config.data.loading
+        if self.loading == 'static':
+            self.get_clients_splits()
         # Set up simulated server
         self.load_model(self.static_global_model_path)
         self.make_clients()
@@ -67,7 +70,7 @@ class LotteryServer(Server):
             self.saved_reports = {}
             self.save_reports(0, []) 
 
-
+    #create clients without dataset assigned
     def make_clients(self):
 
         clients = []
@@ -86,7 +89,8 @@ class LotteryServer(Server):
         warmup_client.download_datasets()
 
     
-    def generate_dataset_index(self):
+    #get server_indices and label_idx_dict
+    def generate_dataset_splits(self):
         
         dataset = get_train_set(self.config.lottery_args.dataset_name)
 
@@ -115,35 +119,44 @@ class LotteryServer(Server):
             self.label_idx_dict[self.labels.index(label)] = \
                 label_idx[server_num:]
 
-        #get id_index_list
-        self.loading = self.config.data.loading
 
-        if self.loading == "dynamic":
-            self.client_num = self.config.clients.per_round
-            
-        if self.loading == "static":
-            self.client_num = self.config.clients.total
+    def get_clients_splits(self):
+
+        tot_data_num = LotteryServer.get_dataset_num(self.config.lottery_args.dataset_name)
+        if self.loading == 'static':
+            client_num = self.config.clients.total
+            tot_num = int(tot_data_num / self.client_num)
+            overlap = False
+
+        if self.loading == 'dynamic':
+            client_num = self.config.clients.per_round
+            tot_num = self.config.data.partition['size']
+            overlap = True
 
         #get nums for each label for one client partition
-        client_idx = self.get_client_idx_list()
-
-        self.id_index_dict = {}
+        client_idx_list = []
+        for _ in range(client_num):
+            client_idx = self.get_label_nums(tot_num)
+            client_idx_list.append(client_idx)
         
-        #every client has the same label distribution, only need one to indicate 
-        #but need a whole list to get different indexes
+        self.id_index_list = []
+        
+        for client_idx in client_idx_list:
+            self.id_index_list.append(self.retrieve_indices(client_idx, overlap))
+    
 
+    #get indices list for a certain label distribution
+    def retrieve_indices(self, client_idx, overlap):
+        client_indices = []
         for label, idx in self.label_idx_dict.items():
             #already shuffle
-            num_per_client = client_idx[self.labels.index(label)]
-
-            for i in range(self.client_num):
-                if i not in self.id_index_dict.keys():
-                    self.id_index_dict[i] = []
-
-                beg = num_per_client * i
-                end = num_per_client * (i+1)
-
-                self.id_index_dict[i].extend(idx[beg:end])
+            random.shuffle(idx)
+            num = client_idx[self.labels.index(label)]
+            client_indices.extend(idx[:num])
+            if not overlap:
+                #delete already retrieved indices
+                idx = idx[num:]
+        return client_indices
             
 
     def get_indices(self, dataset,label):
@@ -154,25 +167,23 @@ class LotteryServer(Server):
         return indices
 
 
-    def get_client_idx_list(self):
-
-        #get number for each label list (only need one for all clients)
+    def get_label_nums(self, tot_num):
+        #get number for each label list 
         client_idx = []
         if self.config.data.IID:
             for label, idx in self.label_idx_dict.items():
-                client_idx.insert(
-                    self.labels.index(label), int(len(idx)/self.client_num))
+                client_idx.insert(self.labels.index(label), int(tot_num/len(self.labels)))
+        
         else:
             bias = self.config.data.bias["primary"]
             secondary = self.config.data.bias["secondary"]
             
             pref = random.choice(self.labels)
-            total_majority = len(self.label_idx_dict[pref])
-            majority = int(total_majority / self.client_num)
-
+            majority = int(tot_num * bias)
+            minority = tot_num - majority
             #for one client get partition
             client_idx = get_partition(
-                self.labels, majority, pref, bias, secondary)
+                self.labels, majority, minority, pref, bias, secondary)
 
         return client_idx
         
@@ -368,23 +379,21 @@ class LotteryServer(Server):
 
     def configuration(self, sample_clients):
 
-        #for dynamic 
-        id_list = list(range(self.config.clients.per_round))
-
-
-        for client in sample_clients:            
-            if self.loading == "static":
-                dataset_indices = self.id_index_dict[client.client_id]
+        display = self.config.clients.display_data_distribution
+        for i in range(len(sample_clients)):   
+            client = sample_clients[i]         
             
-            if self.loading == "dynamic":
-                i = random.choice(id_list)
-                id_list.remove(i)
-                dataset_indices = self.id_index_dict[i]
+            if self.loading == 'static':
+                dataset_indices = self.id_index_list[i]
+            
+            if self.loading == 'dynamic':
+                self.get_clients_splits()
+                dataset_indices = self.id_index_list[i]
 
             client.set_data_indices(dataset_indices)
             
-        if self.config.clients.display_data_distribution:
-            self.display_data_distribution(sample_clients[0])
+            if display:
+                self.display_data_distribution(client)
 
     
     def display_data_distribution(self, client):
@@ -400,13 +409,14 @@ class LotteryServer(Server):
         tot_num = sum(label_cnt)
         if self.config.data.IID:
             logging.info(
-                f'Total {tot_num} data in one client, {label_cnt[0]} for one label.')
+                f'Total {tot_num} data in client {client.client_id}, {label_cnt[0]} for one label.')
 
         else:
             pref_num = max(label_cnt)
             bias = round(pref_num / tot_num,2)
             logging.info(
-                f'Total {tot_num} data in one client, label {label_cnt.index(pref_num)} has {bias} of total data.')
+                f'Total {tot_num} data in client {client.client_id},\
+                    label {label_cnt.index(pref_num)} has {bias} of total data.')
             
 
     def get_total_sample(self, masks):
