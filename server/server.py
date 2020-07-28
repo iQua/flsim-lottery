@@ -25,7 +25,19 @@ class Server(object):
     def __init__(self, config):
         self.config = config
         self.saved_reports = {}
-        self.prefix_time = current_time()
+        self.current_run_path = os.path.join("/mnt/open_lth_data",\
+            current_time()+"-"+self.config.lottery_args.subcommand)
+
+        if not os.path.exists(self.current_run_path):
+            os.mkdir(self.current_run_path)
+        
+        # Set logging
+        logging.basicConfig(
+            filename=os.path.join(self.current_run_path, 'logger.log'), 
+            format='[%(threadName)s][%(asctime)s]: %(message)s', 
+            level=self.config.log_level, 
+            datefmt='%H:%M:%S')
+
 
     # Set up server
     def boot(self):
@@ -34,6 +46,7 @@ class Server(object):
 
     def load_model(self):
         pass
+
 
     def make_clients(self, num_clients):
         pass
@@ -72,22 +85,21 @@ class Server(object):
 
 
     def set_params(self, round_id):   
-        self.config.lottery_args.round_num = round_id
-        self.config.lottery_args.global_model_path = \
-            self.config.paths.model + '/global'
+        self.config.lottery_args.round_num = round_id        
         self.config.lottery_args.client_num = self.config.clients.total
-        
-        current_run_path = os.path.join("/mnt/open_lth_data",\
-            self.prefix_time+"-"+self.config.lottery_args.subcommand)
-        
-        self.global_model_path = os.path.join(current_run_path, str(round_id))
-        self.config.lottery_args.prefix_path = current_run_path
 
-        if not os.path.exists(current_run_path):
-            os.mkdir(current_run_path)
+        self.global_model_path_per_round = os.path.join(
+            self.current_run_path, str(round_id))
 
+        self.config.lottery_args.prefix_path = self.current_run_path
+
+        # Static global model path
+        self.config.lottery_args.global_model_path = os.path.join(
+            self.config.paths.model, "global.pth")
+
+        # Backup config file
         shutil.copyfile(self.config.config_path, \
-            os.path.join(current_run_path, "config.json"))
+            os.path.join(self.current_run_path, "config.json"))
  
 
     def round(self):
@@ -105,8 +117,10 @@ class Server(object):
 
         return sample_clients
 
+
     def configuration(self, sample_clients):
         pass
+
 
     def reporting(self, sample_clients):
         # Recieve reports from sample clients
@@ -136,6 +150,7 @@ class Server(object):
             updates.append(update)
 
         return updates
+
 
     def federated_averaging(self, reports, weights):
         
@@ -173,13 +188,18 @@ class Server(object):
 
         return np.array(weight_vecs)
 
-    def save_model(self, model, path):
+
+    def save_model(self, model, path, filename=None):
         if not os.path.exists(path):
             os.makedirs(path)
-        path += '/global'
+        if filename:
+            path += '/'+filename
+        else:
+            path += '/global.pth'
         
         torch.save(model.state_dict(), path)
         logging.info('Saved global model: {}'.format(path))
+
 
     def save_reports(self, round, reports):
 
