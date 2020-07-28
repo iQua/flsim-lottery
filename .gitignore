@@ -111,3 +111,5 @@ data/
 ./logs
 .vscode/
 reports.pkl
+
+*.json

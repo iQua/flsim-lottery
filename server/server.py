@@ -5,7 +5,8 @@ import numpy as np
 import pickle
 import random
 import sys
-from threading import Thread
+import shutil
+
 import torch
 import utils.dists as dists  # pylint: disable=no-name-in-module
 from utils.fl_model import load_weights, extract_weights # pylint: disable=no-name-in-module
@@ -15,7 +16,8 @@ import pytz
 def current_time():
     tz_NY = pytz.timezone('America/New_York') 
     datetime_NY = datetime.now(tz_NY)
-    return datetime_NY.strftime("%H:%M:%S")
+    return datetime_NY.strftime("%m_%d_%H:%M:%S")
+
 
 class Server(object):
     """Basic federated learning server."""
@@ -35,6 +37,7 @@ class Server(object):
 
     def make_clients(self, num_clients):
         pass
+
 
     # Run federated learning
     def run(self):
@@ -67,21 +70,25 @@ class Server(object):
                 pickle.dump(self.saved_reports, f)
             logging.info('Saved reports: {}'.format(reports_path))
 
-    def set_params(self, round_id):
-        
+
+    def set_params(self, round_id):   
         self.config.lottery_args.round_num = round_id
         self.config.lottery_args.global_model_path = \
             self.config.paths.model + '/global'
         self.config.lottery_args.client_num = self.config.clients.total
         
-        self.global_model_path = os.path.join(
-            "/mnt/open_lth_data", 
-            self.prefix_time+"-"+self.config.lottery_args.subcommand, 
-            str(round_id))
-
-        self.config.lottery_args.prefix_path = os.path.join(
-            "/mnt/open_lth_data", 
+        current_run_path = os.path.join("/mnt/open_lth_data",\
             self.prefix_time+"-"+self.config.lottery_args.subcommand)
+        
+        self.global_model_path = os.path.join(current_run_path, str(round_id))
+        self.config.lottery_args.prefix_path = current_run_path
+
+        if not os.path.exists(current_run_path):
+            os.mkdir(current_run_path)
+
+        shutil.copyfile(self.config.config_path, \
+            os.path.join(current_run_path, "config.json"))
+ 
 
     def round(self):
         return 0

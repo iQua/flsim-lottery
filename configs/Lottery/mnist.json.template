@@ -15,16 +15,12 @@
             ],
         "server_split": 0.1
         },
-        "IID": false,
-	"bias": {
-	    "primary": 0.8,
-	    "secondary": false
-	}
+        "IID": true
     },
     "federated_learning": {
-        "rounds": 200,
-        "target_accuracy": 0.95,
-        "mode": "normal"
+        "rounds": 1000,
+        "mode": "normal",
+        "target_accuracy": 0.97
     },
     "paths": {
         "data": "./data",
@@ -33,7 +29,7 @@
     },
     "server": "lth",
     "lottery": {
-        "subcommand": "train",
+        "subcommand": "lottery",
         "platform": "local",
         "display_output_location": false,
         "num_workers": 0,
@@ -41,10 +37,11 @@
         "default_hparams": null,
         "quiet": false,
         "evaluate_only_at_end": false,
+        "levels": 1,
         "rewinding_steps": null,
         "pretrain": false,
         "dataset_name": "mnist",
-        "batch_size": 32,
+        "batch_size": 10,
         "do_not_augment": false,
         "transformation_seed": null,
         "subsample_fraction": null,
@@ -69,12 +66,14 @@
         "warmup_steps": null,
         "weight_decay": null,
         "apex_fp16": false,
+        "pruning_strategy": "sparse_global",
+        "pruning_fraction": 0.2,
+        "pruning_layers_to_ignore": null,
         "client_num": 100,
-        "client_id": 0,
-        "round_num": 5,
+        "client_id": null,
+        "round_num": null,
         "index_list": null,
         "global_model_path": null,
-        "prefix_time": null
-        
+        "prefix_path": null
     }
 }
