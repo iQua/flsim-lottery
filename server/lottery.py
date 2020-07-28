@@ -234,8 +234,12 @@ class LotteryServer(Server):
 
         if train_mode == "lottery":
             return self.get_best_lottery(sample_clients, reports)
-        if train_mode == "train":
+        elif train_mode == "train":
             return self.get_train_model(sample_clients, reports)
+        elif train_mode == "rl-train":
+            return self.train_best_model_rl(sample_clients, reports)
+        elif train_mode == "rl-run":
+            return self.get_best_model_rl(sample_clients, reports) 
 
 
     def get_train_model(self, sample_clients, reports):
@@ -269,7 +273,7 @@ class LotteryServer(Server):
         return accuracy
         
 
-    def get_best_lottery(self, sample_clients, reports):
+    def __get_accuracy_per_level(self, sample_clients, reports):
 
         client_paths = [client.data_folder for client in sample_clients]
         tot_level = self.config.lottery_args.levels + 1
@@ -311,12 +315,19 @@ class LotteryServer(Server):
                 os.path.join(self.global_model_path_per_round, 'global')
             
             # backup global model of different levels to round directory
-            self.save_model(self.model, model_path, f'level_{i}_model.pth')        
+            self.save_model(self.model, model_path, f'level_{i}_model.pth') 
 
         with open(os.path.join(
             self.global_model_path_per_round, 'accuracy.json'), 'w') as fp:
             json.dump(accuracy_dict, fp) 
- 
+
+        return accuracy_dict       
+
+
+    def get_best_lottery(self, sample_clients, reports):
+
+        accuracy_dict = self.__get_accuracy_per_level(sample_clients, reports)       
+
         best_level = max(accuracy_dict, key=accuracy_dict.get)
         best_path = os.path.join(
             self.global_model_path_per_round, \
@@ -337,6 +348,15 @@ class LotteryServer(Server):
 
 
     def get_pruned_model(self, sample_clients, reports, prune_level):
+        
+        accuracy_dict = self.__get_accuracy_per_level(sample_clients, reports)       
+
+
+    def train_best_model_rl(self, sample_clients, reports):
+        pass
+
+
+    def get_best_model_rl(self, sample_clients, reports):
         pass
 
 
@@ -345,7 +365,7 @@ class LotteryServer(Server):
         accuracy = fl_model.test(model, self.testloader)
 
         return accuracy  
-    
+
 
     def get_model_weight(self, path, strict):
 
