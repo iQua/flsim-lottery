@@ -25,18 +25,18 @@ args = parser.parse_args()
 def main():
     """Run a federated learning simulation."""
 
-    #set up log file
-    tz_NY = pytz.timezone('America/New_York')
-    LOG_FILE = datetime.now(tz_NY).strftime('./logs/log_%H_%M_%S_%d_%m.log')
+    # #set up log file
+    # tz_NY = pytz.timezone('America/New_York')
+    # LOG_FILE = datetime.now(tz_NY).strftime('./logs/%m_%d_%H_%M_%S.log')
 
-    # Set logging
-    logging.basicConfig(filename=LOG_FILE, 
-                        format='[%(threadName)s][%(asctime)s]: %(message)s', 
-                        level=getattr(logging, args.log.upper()), 
-                        datefmt='%H:%M:%S')
+    # # Set logging
+    # logging.basicConfig(filename=LOG_FILE, 
+    #                     format='[%(threadName)s][%(asctime)s]: %(message)s', 
+    #                     level=getattr(logging, args.log.upper()), 
+    #                     datefmt='%H:%M:%S')
 
     # Read configuration file
-    fl_config = config.Config(args.config)
+    fl_config = config.Config(args.config, args.log)
 
     # Initialize server
     fl_server = {

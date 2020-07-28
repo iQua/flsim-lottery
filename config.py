@@ -5,9 +5,10 @@ import argparse
 class Config(object):
     """Configuration module."""
 
-    def __init__(self, config):
+    def __init__(self, config, log_level):
         self.paths = ""
         self.config_path = config
+        self.log_level = log_level
         # Load config file
         with open(config, 'r') as config:
             self.config = json.load(config)
