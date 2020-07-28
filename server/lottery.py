@@ -17,10 +17,6 @@ import json
 import torchvision
 from server import Server
 
-# sys.path.append("..")
-# sys.path.append("../client/")
-#sys.path.append("../client/open_lth/")
-
 from client.lth_client import LTHClient # pylint: disable=impoprt-error
 import utils.dists as dists  # pylint: disable=no-name-in-module
 import utils.fl_model as fl_model 
@@ -34,25 +30,24 @@ class LotteryServer(Server):
     def __init__(self, config):
         super().__init__(config)
     
+
     def boot(self):
         logging.info('Booting {} server...'.format(self.config.server))
 
-        model_path = self.config.paths.model
+        self.static_global_model_path = self.config.paths.model
         
         # Add fl_model to import path
-        sys.path.append(model_path)
+        sys.path.append(self.static_global_model_path)
 
         #arrange data
         self.generate_dataset_index()
 
         # Set up simulated server
-        self.load_model()
+        self.load_model(self.static_global_model_path)
         self.make_clients()
 
 
-    def load_model(self):
-
-        model_path = self.config.paths.model
+    def load_model(self, static_global_model_path):
 
         lottery_runner = runner_registry.get(
             self.config.lottery_args.subcommand).create_from_args( \
@@ -63,7 +58,7 @@ class LotteryServer(Server):
             lottery_runner.desc.model_hparams, 
             outputs=lottery_runner.desc.train_outputs)
 
-        self.save_model(self.model, model_path)
+        self.save_model(self.model, static_global_model_path)
         
         self.baseline_weights = fl_model.extract_weights(self.model)
 
@@ -251,14 +246,13 @@ class LotteryServer(Server):
 
         logging.info('Global accuracy: {:.2f}%\n'.format(100 * accuracy))
 
-        model_path = os.path.join(self.global_model_path, 'global')
-        if not os.path.exists(model_path):
-            os.makedirs(model_path)
-
-        torch.save(self.model.state_dict(), model_path+ f'/global_model.pth')
-
+        # update static global model
+        self.save_model(self.model, self.static_global_model_path)
+        # backup global model to round directory
+        self.save_model(self.model, self.global_model_path_per_round)
+        
         with open(
-            os.path.join(self.global_model_path, 'accuracy.json'), 'w') as fp:
+            os.path.join(self.global_model_path_per_round, 'accuracy.json'), 'w') as fp:
             json.dump(accuracy, fp) 
 
         return accuracy
@@ -302,17 +296,37 @@ class LotteryServer(Server):
             accuracy_dict[i] = self.test_model_accuracy(
                 base_model, updated_weights)
 
-            model_path = os.path.join(self.global_model_path, 'global')
-            if not os.path.exists(model_path):
-                os.makedirs(model_path)
-            test_model_path=model_path+ f'/level_{i}_model.pth'
-            torch.save(base_model.state_dict(), test_model_path)        
+            model_path = \
+                os.path.join(self.global_model_path_per_round, 'global')
+            
+            # backup global model of different levels to round directory
+            self.save_model(self.model, model_path, f'level_{i}_model.pth')        
 
-        with open(
-            os.path.join(self.global_model_path, 'accuracy.json'), 'w') as fp:
+        with open(os.path.join(
+            self.global_model_path_per_round, 'accuracy.json'), 'w') as fp:
             json.dump(accuracy_dict, fp) 
  
-        return self.get_best_global_model(accuracy_dict)
+        best_level = max(accuracy_dict, key=accuracy_dict.get)
+        best_path = os.path.join(
+            self.global_model_path_per_round, \
+            'global', f'level_{best_level}_model.pth')
+
+        self.model.load_state_dict(torch.load(best_path))
+        self.model.eval()
+
+        # update static global model
+        self.save_model(self.model, self.static_global_model_path)
+        # backup the best global model to round directory
+        self.save_model(self.model, self.global_model_path_per_round)
+
+        accuracy = accuracy_dict[best_level]
+        logging.info('Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
+
+        return accuracy
+
+
+    def get_pruned_model(self, sample_clients, reports, prune_level):
+        pass
 
 
     def test_model_accuracy(self, model, updated_weights):
@@ -322,20 +336,24 @@ class LotteryServer(Server):
         return accuracy  
 
 
-    def get_best_global_model(self, accuracy_dict):
+    # def get_best_global_model(self, accuracy_dict):
                 
-        best_level = max(accuracy_dict, key=accuracy_dict.get)
-        best_path = os.path.join(
-            self.global_model_path, 'global', f'level_{best_level}_model.pth')
+    #     best_level = max(accuracy_dict, key=accuracy_dict.get)
+    #     best_path = os.path.join(
+    #         self.global_model_path, 'global', f'level_{best_level}_model.pth')
 
-        self.model.load_state_dict(torch.load(best_path))
-        self.model.eval()
-        self.save_model(self.model, self.config.paths.model)
+    #     self.model.load_state_dict(torch.load(best_path))
+    #     self.model.eval()
 
-        accuracy = accuracy_dict[best_level]
-        logging.info('Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
+    #     # update static global model
+    #     self.save_model(self.model, self.static_global_model_path)
+    #     # backup global model to round directory
+    #     self.save_model(self.model, self.global_model_path_per_round)
 
-        return accuracy
+    #     accuracy = accuracy_dict[best_level]
+    #     logging.info('Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
+
+    #     return accuracy
     
 
     def get_model_weight(self, path, strict):
