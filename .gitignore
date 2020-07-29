@@ -114,3 +114,5 @@ reports.pkl
 
 *.json
 models/
+
+*.swp
