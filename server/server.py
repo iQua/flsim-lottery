@@ -25,8 +25,14 @@ class Server(object):
     def __init__(self, config):
         self.config = config
         self.saved_reports = {}
-        self.current_run_path = os.path.join("/mnt/open_lth_data",\
-            current_time()+"-"+self.config.lottery_args.subcommand)
+
+        if self.config.lottery_args.subcommand == "lottery":
+            self.current_run_path = os.path.join("/mnt/open_lth_data",\
+                current_time()+"-"+self.config.lottery_args.subcommand\
+                    +"_"+self.config.fl.prune_level_setter)
+        else:
+            self.current_run_path = os.path.join("/mnt/open_lth_data",\
+                current_time()+"-"+self.config.lottery_args.subcommand)
 
         if not os.path.exists(self.current_run_path):
             os.mkdir(self.current_run_path)
@@ -95,7 +101,7 @@ class Server(object):
 
         # Static global model path
         self.config.lottery_args.global_model_path = os.path.join(
-            self.config.paths.model, "global.pth")
+            self.config.paths.model)
 
         # Backup config file
         shutil.copyfile(self.config.config_path, \
@@ -192,6 +198,7 @@ class Server(object):
     def save_model(self, model, path, filename=None):
         if not os.path.exists(path):
             os.makedirs(path)
+        
         if filename:
             path += '/'+filename
         else:

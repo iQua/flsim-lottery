@@ -13,6 +13,7 @@ use_cuda = torch.cuda.is_available()
 device = torch.device(  # pylint: disable=no-member
     'cuda' if use_cuda else 'cpu')
 
+
 def extract_weights(model):
     weights = []
     for name, weight in model.to(torch.device('cpu')).named_parameters():  # pylint: disable=no-member
@@ -20,12 +21,14 @@ def extract_weights(model):
             weights.append((name, weight.data))
     return weights
 
+
 def load_weights(model, weights):
     updated_state_dict = {}
     for name, weight in weights:
         updated_state_dict[name] = weight
 
     model.load_state_dict(updated_state_dict, strict=False)
+
 
 #modified from open_lth/training/standard_callbacks
 def test(model, testloader):
