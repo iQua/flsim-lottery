@@ -1,5 +1,7 @@
+import numpy as np
 import logging
 import torch
+import json
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -48,3 +50,22 @@ def test(model, testloader):
     logging.debug('Accuracy: {:.2f}%'.format(100 * accuracy))
 
     return accuracy
+
+def generate_sparsity_report(model, path):
+    weights = extract_weights(model)
+    tot_num_cnt = 0
+    unpruned_cnt = 0
+    for (name, tensor) in weights:
+            #if 'bias' in name:
+            #    continue
+        tot_num_cnt += get_cnt(tensor)
+        nonzero_tensor = torch.nonzero(tensor)
+        unpruned_cnt += len(nonzero_tensor)
+    report = {}
+    report['total'] = int(tot_num_cnt)
+    report['unpruned'] = int(unpruned_cnt)
+    with open(path, 'w')as pf:
+        json.dump(report, pf)
+    
+def get_cnt(tensor):
+        return np.sum([np.product([ti for ti in tensor.size()])])
