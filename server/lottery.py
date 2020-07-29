@@ -4,25 +4,23 @@ import numpy as np
 import pickle
 import random
 import sys
-
-# from threading import Thread
-from multiprocessing import Process, Value, Lock, Queue
-from ctypes import c_wchar_p, c_int
+import json
+from multiprocessing import Process, Queue
 
 import torch
-# torch.multiprocessing.set_start_method("spawn")
 import torch.multiprocessing as mp
-
-import json
+from torchsummary import summary
 import torchvision
-from server import Server
 
+from server import Server
 from client.lth_client import LTHClient # pylint: disable=impoprt-error
 import utils.dists as dists  # pylint: disable=no-name-in-module
 import utils.fl_model as fl_model 
 from utils.load_dataset import get_partition, get_train_set, get_testloader
 import open_lth.models.registry as models_registry
 from open_lth.cli import runner_registry
+from open_lth.pruning.mask import Mask
+
 
 class LotteryServer(Server):
     """server for open_lth"""
@@ -199,8 +197,6 @@ class LotteryServer(Server):
     def round(self):
         sample_clients = self.selection()
 
-        # client_paths = Array(c_char_p, [b'']*len(sample_clients), lock=False)
-
         self.configuration(sample_clients)
 
         proc_queue = Queue()
@@ -232,10 +228,24 @@ class LotteryServer(Server):
 
         train_mode = self.config.lottery_args.subcommand
 
-        if train_mode == "lottery":
-            return self.get_best_lottery(sample_clients, reports)
-        if train_mode == "train":
+        if self.config.lottery_args.subcommand == "lottery":
+            if self.config.fl.prune_level_setter == "greedy":
+                return self.get_best_lottery(sample_clients, reports)
+            elif self.config.fl.prune_level_setter == "rl-train":
+                return self.train_best_model_rl(sample_clients, reports)
+            elif self.config.fl.prune_level_setter == "rl-run":
+                return self.get_best_model_rl(sample_clients, reports)
+            elif self.config.fl.prune_level_setter == "manual":
+                return self.get_pruned_model(
+                    sample_clients, reports, self.config.lottery_args.levels)
+            else:
+                sys.exit("Configuration Error: lottery.subcommand, "\
+                    +"federated_learning.prune_level_setter")
+
+        elif self.config.lottery_args.subcommand == "train":
             return self.get_train_model(sample_clients, reports)
+        else:
+            sys.exit("Configuration Error: lottery.subcommand")
 
 
     def get_train_model(self, sample_clients, reports):
@@ -253,7 +263,7 @@ class LotteryServer(Server):
 
         updated_weights = self.federated_averaging(reports, weights)
 
-        accuracy = self.test_model_accuracy(self.model, updated_weights)
+        _, accuracy = self.test_model_accuracy(self.model, updated_weights)
 
         logging.info('Global accuracy: {:.2f}%\n'.format(100 * accuracy))
 
@@ -261,15 +271,23 @@ class LotteryServer(Server):
         self.save_model(self.model, self.static_global_model_path)
         # backup global model to round directory
         self.save_model(self.model, self.global_model_path_per_round)
+
+        #get global model summary and sparsity report 
+        fl_model.generate_sparsity_report(
+            self.model, self.global_model_path_per_round +f'/sparsity_report.json')
+
+        self.save_model_summary(
+            self.model, self.global_model_path_per_round + f'/global_model.pth')
         
         with open(
-            os.path.join(self.global_model_path_per_round, 'accuracy.json'), 'w') as fp:
+            os.path.join(
+                self.global_model_path_per_round, 'accuracy.json'), 'w') as fp:
             json.dump(accuracy, fp) 
 
         return accuracy
-        
 
-    def get_best_lottery(self, sample_clients, reports):
+
+    def __get_accuracy_per_level(self, sample_clients, reports):
 
         client_paths = [client.data_folder for client in sample_clients]
         tot_level = self.config.lottery_args.levels + 1
@@ -288,7 +306,7 @@ class LotteryServer(Server):
                 weights.append(weight)
 
             #aggregation
-            if self.config.fl.mode == "mask": 
+            if self.config.fl.aggregation == "mask": 
                 masks = []
                 for client_path in client_paths:
                     mask_path = os.path.join(client_path, f'level_{i}', 'main', 
@@ -299,32 +317,49 @@ class LotteryServer(Server):
                 updated_weights = self.federated_averaging_with_mask(
                     reports, weights, masks)
             
-            if self.config.fl.mode == "normal":
+            if self.config.fl.aggregation == "normal":
                 updated_weights = self.federated_averaging(reports, weights)
 
             #test accuracy 
             base_model = self.model
-            accuracy_dict[i] = self.test_model_accuracy(
+            base_model, accuracy_dict[i] = self.test_model_accuracy(
                 base_model, updated_weights)
+  
+            model_path = os.path.join(self.global_model_path_per_round, \
+                'global', f'level_{i}')
 
-            model_path = \
-                os.path.join(self.global_model_path_per_round, 'global')
-            
             # backup global model of different levels to round directory
-            self.save_model(self.model, model_path, f'level_{i}_model.pth')        
+            self.save_model(base_model, model_path, f'model.pth')    
+
+            #save model summary and sparsity report
+            self.save_model_summary(
+                base_model, model_path+f'/model.pth') 
+            fl_model.generate_sparsity_report(
+                base_model, model_path+f'/sparsity_report.json')      
 
         with open(os.path.join(
             self.global_model_path_per_round, 'accuracy.json'), 'w') as fp:
             json.dump(accuracy_dict, fp) 
- 
+
+        return accuracy_dict       
+
+
+    def get_best_lottery(self, sample_clients, reports):
+
+        accuracy_dict = self.__get_accuracy_per_level(sample_clients, reports)       
+
         best_level = max(accuracy_dict, key=accuracy_dict.get)
         best_path = os.path.join(
             self.global_model_path_per_round, \
-            'global', f'level_{best_level}_model.pth')
+            'global', f'level_{best_level}', 'model.pth')
 
+        #here self.model is the best model
         self.model.load_state_dict(torch.load(best_path))
         self.model.eval()
 
+        #get best global model mask and save to the static mask path (update with every round)
+        self.save_global_mask(
+            self.model, self.static_global_model_path+f'/mask.pth')
         # update static global model
         self.save_model(self.model, self.static_global_model_path)
         # backup the best global model to round directory
@@ -336,7 +371,67 @@ class LotteryServer(Server):
         return accuracy
 
 
+    def save_global_mask(self, model,path):
+        # Get the model weights.
+        prunable_layers = []
+        
+        for name, module in model.named_modules():
+            if isinstance(module, torch.nn.modules.conv.Conv2d) \
+                or isinstance(module, torch.nn.modules.linear.Linear):
+            
+                prunable_layers.append(name+'weight')
+            
+        prunable_tensors = set(prunable_layers)
+                
+        weights = {k: v.clone().cpu().detach().numpy()
+                   for k, v in model.state_dict().items()
+                   if k in prunable_tensors}
+        for k, v in model.state_dict().items():
+            if k in prunable_tensors:
+                weights[k] = v.clone().cpu().detach().numpy()
+    
+        new_mask = Mask({k: self.div0(v,v)
+                         for k, v in weights.items()})
+        
+        #bias part
+        current_mask = Mask.ones_like(model).numpy() 
+        for k in current_mask:
+            if k not in new_mask:
+                new_mask[k] = current_mask[k]
+        
+        torch.save({k: v.cpu().int() for k, v in new_mask.items()}, path)
+
+        
     def get_pruned_model(self, sample_clients, reports, prune_level):
+        # accuracy_dict = { level: global_model_accuracy }
+        accuracy_dict = self.__get_accuracy_per_level(sample_clients, reports)
+        selected_model_path = os.path.join(self.global_model_path_per_round, \
+            'global', f'level_{prune_level}', 'model.pth')
+        
+        self.model.load_state_dict(torch.load(selected_model_path))
+        self.model.eval()
+
+        #get best global model mask and save to the static mask path(update with every round)
+        self.save_global_mask(
+            self.model, self.static_global_model_path+f'/mask.pth')
+
+        # update static global model for next round
+        self.save_model(self.model, self.static_global_model_path)
+        # backup the seleted global model to round directory
+        self.save_model(self.model, self.global_model_path_per_round)
+
+        accuracy = accuracy_dict[prune_level]
+        logging.info(f'Selected level-{prune_level} model accuracy: '\
+            + '{:.2f}%\n'.format(100 * accuracy))
+        
+        return accuracy
+          
+
+    def train_best_model_rl(self, sample_clients, reports):
+        pass
+    
+
+    def get_best_model_rl(self, sample_clients, reports):
         pass
 
 
@@ -344,37 +439,36 @@ class LotteryServer(Server):
         fl_model.load_weights(model, updated_weights)
         accuracy = fl_model.test(model, self.testloader)
 
-        return accuracy  
+        return model, accuracy 
 
-
-    # def get_best_global_model(self, accuracy_dict):
-                
-    #     best_level = max(accuracy_dict, key=accuracy_dict.get)
-    #     best_path = os.path.join(
-    #         self.global_model_path, 'global', f'level_{best_level}_model.pth')
-
-    #     self.model.load_state_dict(torch.load(best_path))
-    #     self.model.eval()
-
-    #     # update static global model
-    #     self.save_model(self.model, self.static_global_model_path)
-    #     # backup global model to round directory
-    #     self.save_model(self.model, self.global_model_path_per_round)
-
-    #     accuracy = accuracy_dict[best_level]
-    #     logging.info('Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
-
-    #     return accuracy
-    
 
     def get_model_weight(self, path, strict):
 
         model = self.model
         model.load_state_dict(torch.load(path), strict=strict)
         model.eval()
+        #the weight pth not mask pth
+        if strict:
+            self.save_model_summary(model, path)
         #weight: tensor
         weight = fl_model.extract_weights(model)
         return weight
+
+
+    def save_model_summary(self, model, pth_path):
+
+        dataset_name = self.config.lottery_args.dataset_name
+        if dataset_name == 'mnist':
+            size = (1, 28, 28)
+        if dataset_name == 'cifar10':
+            size = (3, 32, 32)
+
+        fpath = pth_path[:-4]+'summary'
+        stdoutOrigin = sys.stdout
+        sys.stdout = open(fpath, 'w+')
+        summary(model, size)
+        sys.stdout.close()
+        sys.stdout=stdoutOrigin
 
 
     def configuration(self, sample_clients):
@@ -423,7 +517,9 @@ class LotteryServer(Server):
 
         total_num = [torch.zeros(x.size()) for _,x in masks[0]]
         for mask in masks:
-            for i, (_, mask) in enumerate(mask):
+            for i, (name, mask) in enumerate(mask):
+                print(name)
+                print(mask)
                 total_num[i]+= mask
 
         return total_num

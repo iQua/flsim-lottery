@@ -19,8 +19,9 @@
     },
     "federated_learning": {
         "rounds": 200,
-        "target_accuracy": 0.95,
-        "mode": "normal"
+        "aggregation": "normal",
+        "target_accuracy": 0.97,
+        "prune_level_setter": "manual"
     },
     "paths": {
         "data": "./data",

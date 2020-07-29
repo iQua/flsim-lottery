@@ -11,7 +11,7 @@ import torch.optim as optim
 sys.path.append("./client/open_lth/")
 
 from client.client import Client, Report
-from utils.fl_model import extract_weights
+from utils.fl_model import extract_weights, generate_sparsity_report
 from open_lth.cli import runner_registry
 from open_lth.cli import arg_utils
 
@@ -79,9 +79,31 @@ class LTHClient(Client):
             lth_runner.desc.data_saved_folder,
             f'replicate_{lth_runner.replicate}')
 
+         #init the model
+        self.model = models_registry.get(
+            lth_runner.desc.model_hparams, 
+            outputs=lth_runner.desc.train_outputs)
+
+
         if self.args.subcommand == "lottery":
-            #lottery mode
             total_levels = self.args.levels
+            #calculate sparsity report
+            for i in range(total_levels+1):
+                path = os.path.join(self.data_folder,   
+                        f'level_{i}', 'main')
+                model_path=path+f'/model_ep0_it0.pth'
+                report_path = path+f'/sparsity_report.json'
+                base_model = self.model
+                base_model.load_state_dict(torch.load(model_path))
+                generate_sparsity_report(base_model, report_path)
+
+                after_model_path=path+f'/model_ep{epoch_num}_it0.pth'
+                after_report_path = path+f'/sparsity_report_after_training.json'
+                base_model.load_state_dict(torch.load(after_model_path))
+                generate_sparsity_report(base_model, after_report_path)
+
+
+            #lottery mode
             target_level = total_levels
             path_to_model = os.path.join(self.data_folder,   
                         f'level_{target_level}', 'main', 
@@ -91,10 +113,6 @@ class LTHClient(Client):
             path_to_model = os.path.join(self.data_folder, 
                          'main', f'model_ep{epoch_num}_it0.pth')
 
-        #init the model
-        self.model = models_registry.get(
-            lth_runner.desc.model_hparams, 
-            outputs=lth_runner.desc.train_outputs)
 
         #load lottery
         self.model.load_state_dict(torch.load(path_to_model))
