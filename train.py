@@ -13,6 +13,10 @@ import torch
 
 
 
+def episode():
+    pass
+
+
 
 def main():
     # Read configuration file
@@ -29,13 +33,7 @@ def main():
         "lth": server.LotteryServer(fl_config) 
     }[fl_config.server]
 
-    fl_server.boot()
-
-    # Run federated learning
-    fl_server.run()
-
-    # Delete global model
-    os.remove(fl_config.paths.model + '/global')
+    
 
 
 
