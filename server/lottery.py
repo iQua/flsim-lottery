@@ -273,11 +273,15 @@ class LotteryServer(Server):
         self.save_model(self.model, self.global_model_path_per_round)
 
         #get global model summary and sparsity report 
-        fl_model.generate_sparsity_report(self.model, self.global_model_path_per_round +f'/sparsity_report.json')
-        self.save_model_summary(self.model, self.global_model_path_per_round + f'/global_model.pth')
+        fl_model.generate_sparsity_report(
+            self.model, self.global_model_path_per_round +f'/sparsity_report.json')
+
+        self.save_model_summary(
+            self.model, self.global_model_path_per_round + f'/global_model.pth')
         
         with open(
-            os.path.join(self.global_model_path_per_round, 'accuracy.json'), 'w') as fp:
+            os.path.join(
+                self.global_model_path_per_round, 'accuracy.json'), 'w') as fp:
             json.dump(accuracy, fp) 
 
         return accuracy
@@ -353,7 +357,7 @@ class LotteryServer(Server):
         self.model.load_state_dict(torch.load(best_path))
         self.model.eval()
 
-        #get best global model mask and save to the static mask path(update with every round)
+        #get best global model mask and save to the static mask path (update with every round)
         self.save_global_mask(
             self.model, self.static_global_model_path+f'/mask.pth')
         # update static global model
@@ -372,7 +376,8 @@ class LotteryServer(Server):
         prunable_layers = []
         
         for name, module in model.named_modules():
-            if isinstance(module, torch.nn.modules.conv.Conv2d) or isinstance(module, torch.nn.modules.linear.Linear):
+            if isinstance(module, torch.nn.modules.conv.Conv2d) \
+                or isinstance(module, torch.nn.modules.linear.Linear):
             
                 prunable_layers.append(name+'weight')
             
@@ -407,7 +412,8 @@ class LotteryServer(Server):
         self.model.eval()
 
         #get best global model mask and save to the static mask path(update with every round)
-        self.save_global_mask(self.model, self.static_global_model_path+f'/mask.pth')
+        self.save_global_mask(
+            self.model, self.static_global_model_path+f'/mask.pth')
 
         # update static global model for next round
         self.save_model(self.model, self.static_global_model_path)
