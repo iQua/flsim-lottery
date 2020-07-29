@@ -25,8 +25,14 @@ class Server(object):
     def __init__(self, config):
         self.config = config
         self.saved_reports = {}
-        self.current_run_path = os.path.join("/mnt/open_lth_data",\
-            current_time()+"-"+self.config.lottery_args.subcommand)
+
+        if self.config.lottery_args.subcommand == "lottery":
+            self.current_run_path = os.path.join("/mnt/open_lth_data",\
+                current_time()+"-"+self.config.lottery_args.subcommand\
+                    +"_"+self.config.fl.prune_level_setter)
+        else:
+            self.current_run_path = os.path.join("/mnt/open_lth_data",\
+                current_time()+"-"+self.config.lottery_args.subcommand)
 
         if not os.path.exists(self.current_run_path):
             os.mkdir(self.current_run_path)

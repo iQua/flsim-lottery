@@ -232,14 +232,24 @@ class LotteryServer(Server):
 
         train_mode = self.config.lottery_args.subcommand
 
-        if train_mode == "lottery":
-            return self.get_best_lottery(sample_clients, reports)
-        elif train_mode == "train":
+        if self.config.lottery_args.subcommand == "lottery":
+            if self.config.fl.prune_level_setter == "greedy":
+                return self.get_best_lottery(sample_clients, reports)
+            elif self.config.fl.prune_level_setter == "rl-train":
+                return self.train_best_model_rl(sample_clients, reports)
+            elif self.config.fl.prune_level_setter == "rl-run":
+                return self.get_best_model_rl(sample_clients, reports)
+            elif self.config.fl.prune_level_setter == "manual":
+                return self.get_pruned_model(
+                    sample_clients, reports, self.config.lottery_args.levels)
+            else:
+                sys.exit("Configuration Error: lottery.subcommand, "\
+                    +"federated_learning.prune_level_setter")
+
+        elif self.config.lottery_args.subcommand == "train":
             return self.get_train_model(sample_clients, reports)
-        elif train_mode == "rl-train":
-            return self.train_best_model_rl(sample_clients, reports)
-        elif train_mode == "rl-run":
-            return self.get_best_model_rl(sample_clients, reports) 
+        else:
+            sys.exit("Configuration Error: lottery.subcommand")
 
 
     def get_train_model(self, sample_clients, reports):
@@ -292,7 +302,7 @@ class LotteryServer(Server):
                 weights.append(weight)
 
             #aggregation
-            if self.config.fl.mode == "mask": 
+            if self.config.fl.aggregation == "mask": 
                 masks = []
                 for client_path in client_paths:
                     mask_path = os.path.join(client_path, f'level_{i}', 'main', 
@@ -303,7 +313,7 @@ class LotteryServer(Server):
                 updated_weights = self.federated_averaging_with_mask(
                     reports, weights, masks)
             
-            if self.config.fl.mode == "normal":
+            if self.config.fl.aggregation == "normal":
                 updated_weights = self.federated_averaging(reports, weights)
 
             #test accuracy 
@@ -315,7 +325,7 @@ class LotteryServer(Server):
                 os.path.join(self.global_model_path_per_round, 'global')
             
             # backup global model of different levels to round directory
-            self.save_model(self.model, model_path, f'level_{i}_model.pth') 
+            self.save_model(self.model, model_path, f'level_{i}_model.pth')
 
         with open(os.path.join(
             self.global_model_path_per_round, 'accuracy.json'), 'w') as fp:
@@ -348,13 +358,29 @@ class LotteryServer(Server):
 
 
     def get_pruned_model(self, sample_clients, reports, prune_level):
+        # accuracy_dict = { level: global_model_accuracy }
+        accuracy_dict = self.__get_accuracy_per_level(sample_clients, reports)
+        selected_model_path = os.path.join(self.global_model_path_per_round, \
+            'global', f'level_{prune_level}_model.pth')
         
-        accuracy_dict = self.__get_accuracy_per_level(sample_clients, reports)       
+        self.model.load_state_dict(torch.load(selected_model_path))
+        self.model.eval()
+
+        # update static global model for next round
+        self.save_model(self.model, self.static_global_model_path)
+        # backup the seleted global model to round directory
+        self.save_model(self.model, self.global_model_path_per_round)
+
+        accuracy = accuracy_dict[prune_level]
+        logging.info(f'Selected level-{prune_level} model accuracy: '\
+            + '{:.2f}%\n'.format(100 * accuracy))
+        
+        return accuracy
 
 
     def train_best_model_rl(self, sample_clients, reports):
         pass
-
+    
 
     def get_best_model_rl(self, sample_clients, reports):
         pass
