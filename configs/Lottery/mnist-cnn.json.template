@@ -1,14 +1,14 @@
 {
     "clients": {
         "total": 100,
-        "per_round": 10,
+        "per_round": 3,
         "label_distribution": "uniform",
         "display_data_distribution": true
     },
     "data": {
         "loading": "dynamic",
         "partition": {
-            "size": 3000,
+            "size": 100,
             "range": [
                 50,
                 200
@@ -19,8 +19,9 @@
     },
     "federated_learning": {
         "rounds": 1000,
-        "mode": "normal",
-        "target_accuracy": 0.99
+        "aggregation": "normal",
+        "target_accuracy": 0.97,
+        "prune_level_setter": "greedy"
     },
     "paths": {
         "data": "./data",
@@ -29,7 +30,7 @@
     },
     "server": "lth",
     "lottery": {
-        "subcommand": "train",
+        "subcommand": "lottery",
         "platform": "local",
         "display_output_location": false,
         "num_workers": 0,
@@ -37,7 +38,7 @@
         "default_hparams": null,
         "quiet": false,
         "evaluate_only_at_end": false,
-        "levels": 2,
+        "levels": 5,
         "rewinding_steps": null,
         "pretrain": false,
         "dataset_name": "mnist",
@@ -48,16 +49,16 @@
         "random_labels_fraction": null,
         "unsupervised_labels": null,
         "blur_factor": null,
-        "model_name": "mnist_cnn",
+        "model_name": "mnist_lenet_300_100",
         "model_init": "kaiming_normal",
         "batchnorm_init": "uniform",
         "batchnorm_frozen": false,
         "output_frozen": false,
         "others_frozen": false,
         "others_frozen_exceptions": null,
-        "optimizer_name": "sgd",
-        "lr": 0.01,
-        "training_steps": "5ep",
+        "optimizer_name": "adam",
+        "lr": 1.2e-3,
+        "training_steps": "1ep",
         "data_order_seed": null,
         "momentum": null,
         "nesterov_momentum": null,
