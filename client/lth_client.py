@@ -91,16 +91,12 @@ class LTHClient(Client):
             for i in range(total_levels+1):
                 path = os.path.join(self.data_folder,   
                         f'level_{i}', 'main')
-                model_path=path+f'/model_ep0_it0.pth'
+                model_path=path+f'/model_ep{epoch_num}_it0.pth'
                 report_path = path+f'/sparsity_report.json'
                 base_model = self.model
                 base_model.load_state_dict(torch.load(model_path))
                 generate_sparsity_report(base_model, report_path)
 
-                after_model_path=path+f'/model_ep{epoch_num}_it0.pth'
-                after_report_path = path+f'/sparsity_report_after_training.json'
-                base_model.load_state_dict(torch.load(after_model_path))
-                generate_sparsity_report(base_model, after_report_path)
 
 
             #lottery mode
