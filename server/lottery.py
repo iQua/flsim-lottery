@@ -125,14 +125,12 @@ class LotteryServer(Server):
             client_num = self.config.clients.total
             tot_num = int(tot_data_num / client_num)
             overlap = False
-
-        if self.loading == 'dynamic':
-            client_num = self.config.clients.per_round
+        elif self.loading == 'dynamic_init':
+            client_num = self.config.clients.total
             tot_num = self.config.data.partition['size']
             overlap = True
-        
-        if self.loading == 'dynamic_init':
-            client_num = self.config.clients.total
+        else:
+            client_num = self.config.clients.per_round
             tot_num = self.config.data.partition['size']
             overlap = True
 
@@ -481,9 +479,11 @@ class LotteryServer(Server):
             client = sample_clients[i]         
             
             if self.loading in ['static', 'dynamic_init']:
-                dataset_indices = self.id_index_list[client.client_id]
-            
-            if self.loading == 'dynamic':
+                dataset_indices = self.id_index_list[client.client_id]            
+            elif self.loading == 'dynamic':
+                self.get_clients_splits()
+                dataset_indices = self.id_index_list[i]
+            else:
                 self.get_clients_splits()
                 dataset_indices = self.id_index_list[i]
 
