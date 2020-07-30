@@ -41,8 +41,9 @@ class LotteryServer(Server):
         #server: server_indices, clients: label_idx_dict
         self.generate_dataset_splits()
         self.loading = self.config.data.loading
-        if self.loading == 'static':
+        if self.loading in ['static','dynamic_init']:
             self.get_clients_splits()
+
         # Set up simulated server
         self.load_model(self.static_global_model_path)
         self.make_clients()
@@ -99,8 +100,7 @@ class LotteryServer(Server):
             self.labels = [label.item() for label in self.labels]
 
         self.labels = list(set(self.labels))
-        
-        
+               
         self.label_idx_dict = {}
         
         server_split = self.config.data.server_split
@@ -120,19 +120,23 @@ class LotteryServer(Server):
 
 
     def get_clients_splits(self):
-
         tot_data_num = LotteryServer.get_dataset_num(self.config.lottery_args.dataset_name)
         if self.loading == 'static':
             client_num = self.config.clients.total
-            tot_num = int(tot_data_num / self.client_num)
+            tot_num = int(tot_data_num / client_num)
             overlap = False
 
         if self.loading == 'dynamic':
             client_num = self.config.clients.per_round
             tot_num = self.config.data.partition['size']
             overlap = True
+        
+        if self.loading == 'dynamic_init':
+            client_num = self.config.clients.total
+            tot_num = self.config.data.partition['size']
+            overlap = True
 
-        #get nums for each label for one client partition
+        #get nums for each label for every client 
         client_idx_list = []
         for _ in range(client_num):
             client_idx = self.get_label_nums(tot_num)
@@ -411,7 +415,7 @@ class LotteryServer(Server):
 
         #get best global model mask and save to the static mask path(update with every round)
         #self.save_global_mask(
-            self.model, self.static_global_model_path+f'/mask.pth')
+        #    self.model, self.static_global_model_path+f'/mask.pth')
 
         # update static global model for next round
         self.save_model(self.model, self.static_global_model_path)
@@ -475,8 +479,8 @@ class LotteryServer(Server):
         for i in range(len(sample_clients)):   
             client = sample_clients[i]         
             
-            if self.loading == 'static':
-                dataset_indices = self.id_index_list[i]
+            if self.loading in ['static', 'dynamic_init']:
+                dataset_indices = self.id_index_list[client.client_id]
             
             if self.loading == 'dynamic':
                 self.get_clients_splits()
