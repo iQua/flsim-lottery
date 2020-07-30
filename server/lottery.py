@@ -481,9 +481,11 @@ class LotteryServer(Server):
             client = sample_clients[i]         
             
             if self.loading in ['static', 'dynamic_init']:
-                dataset_indices = self.id_index_list[client.client_id]
-            
-            if self.loading == 'dynamic':
+                dataset_indices = self.id_index_list[client.client_id]            
+            elif self.loading == 'dynamic':
+                self.get_clients_splits()
+                dataset_indices = self.id_index_list[i]
+            else:
                 self.get_clients_splits()
                 dataset_indices = self.id_index_list[i]
 
