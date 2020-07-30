@@ -125,14 +125,12 @@ class LotteryServer(Server):
             client_num = self.config.clients.total
             tot_num = int(tot_data_num / client_num)
             overlap = False
-
-        if self.loading == 'dynamic':
-            client_num = self.config.clients.per_round
+        elif self.loading == 'dynamic_init':
+            client_num = self.config.clients.total
             tot_num = self.config.data.partition['size']
             overlap = True
-        
-        if self.loading == 'dynamic_init':
-            client_num = self.config.clients.total
+        else:
+            client_num = self.config.clients.per_round
             tot_num = self.config.data.partition['size']
             overlap = True
 
