@@ -454,6 +454,7 @@ class LotteryServer(Server):
 
 
     def save_model_summary(self, model, pth_path):
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         dataset_name = self.config.lottery_args.dataset_name
         if dataset_name == 'mnist':
@@ -464,7 +465,7 @@ class LotteryServer(Server):
         fpath = pth_path[:-4]+'summary'
         stdoutOrigin = sys.stdout
         sys.stdout = open(fpath, 'w+')
-        summary(model, size)
+        summary(model.to(device), size)
         sys.stdout.close()
         sys.stdout=stdoutOrigin
 
