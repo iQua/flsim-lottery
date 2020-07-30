@@ -13,26 +13,41 @@ import torch
 
 
 
-def episode():
-    pass
+MAX_EPISODES = 1000
+
+
+
+
+
+def episode(fl_server):
+
+    # Run federated learning
+    fl_server.run()
+
 
 
 
 def main():
+
+    agent = Agent()
+    env = Environment()
     # Read configuration file
     fl_config = config.Config(args.config, args.log)
 
     # Initialize server
-    fl_server = {
-        "basic": server.Server(fl_config),
-        "accavg": server.AccAvgServer(fl_config),
-        "directed": server.DirectedServer(fl_config),
-        "kcenter": server.KCenterServer(fl_config),
-        "kmeans": server.KMeansServer(fl_config),
-        "magavg": server.MagAvgServer(fl_config),
-        "lth": server.LotteryServer(fl_config) 
-    }[fl_config.server]
+    rl_server = server.RLLotteryServer(fl_config, env, agent) 
 
+
+    rl_server.boot()
+
+    # probe clients
+    rl_server.probe()
+
+
+    for episode in range(1, MAX_EPISODES+1):
+
+        episode(rl_server)
+ 
     
 
 

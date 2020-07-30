@@ -22,9 +22,12 @@ def current_time():
 class Server(object):
     """Basic federated learning server."""
 
-    def __init__(self, config):
+    def __init__(self, config, env=None, agent=None):
         self.config = config
         self.saved_reports = {}
+        
+        self.agent = agent
+        self.env = env
 
         if self.config.lottery_args.subcommand == "lottery":
             self.current_run_path = os.path.join("/mnt/open_lth_data",\
