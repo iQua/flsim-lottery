@@ -411,7 +411,7 @@ class LotteryServer(Server):
 
         #get best global model mask and save to the static mask path(update with every round)
         #self.save_global_mask(
-            self.model, self.static_global_model_path+f'/mask.pth')
+            # self.model, self.static_global_model_path+f'/mask.pth')
 
         # update static global model for next round
         self.save_model(self.model, self.static_global_model_path)
