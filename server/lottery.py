@@ -61,6 +61,12 @@ class LotteryServer(Server):
 
         self.save_model(self.model, static_global_model_path)
         
+        mask_path = static_global_model_path + f'/mask.pth'
+        #load mask
+        if os.path.exists(mask_path):
+            os.remove(mask_path)
+        #torch.save(Mask.ones_like(self.model), mask_path)
+
         self.baseline_weights = fl_model.extract_weights(self.model)
 
         #extract flattened weights
