@@ -38,6 +38,7 @@ class LTHClient(Client):
         return 'LTH-Client #{}: {} samples'.format(
             self.client_id, len(self.dataset_indices))
 
+
     def set_data_indices(self, dataset_indices):
         
         self.dataset_indices = dataset_indices
@@ -121,8 +122,59 @@ class LTHClient(Client):
         queue.put((self.client_id, self.data_folder, len(self.dataset_indices)))
 
 
+    def probe(self, queue=None):
+        logging.info(f'probing on client {self.client_id}')
+
+        self.configure()
+        
+        lth_runner = runner_registry.get(
+            self.args.subcommand).create_from_args(self.args)
+        
+        #run lottery
+        self.platform.run_job(lth_runner.run)
+        
+        epoch_num = int(self.args.training_steps[0:-2])
+        
+        self.data_folder = os.path.join(\
+            lth_runner.desc.data_saved_folder,
+            f'replicate_{lth_runner.replicate}')
+
+         #init the model
+        self.model = models_registry.get(
+            lth_runner.desc.model_hparams, 
+            outputs=lth_runner.desc.train_outputs)
+
+        total_levels = self.args.levels
+        #calculate sparsity report
+        for i in range(total_levels+1):
+            path = os.path.join(self.data_folder,   
+                    f'level_{i}', 'main')
+            model_path=path+f'/model_ep{epoch_num}_it0.pth'
+            report_path = path+f'/sparsity_report.json'
+            base_model = self.model
+            base_model.load_state_dict(torch.load(model_path))
+            generate_sparsity_report(base_model, report_path)
+
+        #lottery mode
+        target_level = total_levels
+        path_to_model = os.path.join(self.data_folder,   
+                    f'level_{target_level}', 'main', 
+                    f'model_ep{epoch_num}_it0.pth')
+
+        #load lottery
+        self.model.load_state_dict(torch.load(path_to_model))
+        weights = extract_weights(self.model)
+
+        #set dataset number 
+        self.report.set_num_samples(len(self.dataset_indices))
+        self.report.weights = weights
+
+        queue.put((self.client_id, self.data_folder, len(self.dataset_indices)))
+
+
     def test(self):
         pass
+
 
     def configure(self):
         """

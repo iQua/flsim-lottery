@@ -88,19 +88,19 @@ class RLLotteryServer(LotteryServer):
 
 
     def probe(self):
-        self.configuration(sample_clients)
+        self.configuration(self.clients)
 
         proc_queue = Queue()
         
-        processes = [mp.Process(target=client.run, args=(proc_queue,)) \
-            for client in sample_clients]
+        processes = [mp.Process(target=client.probe, args=(proc_queue,)) \
+            for client in self.clients]
 
         [p.start() for p in processes]
         [p.join() for p in processes]
                 
         #get every client path
-        sample_client_dict = {
-            client.client_id: client for client in sample_clients}
+        all_client_dict = {
+            client.client_id: client for client in self.clients}
 
         while not proc_queue.empty():
             client_id, data_folder, num_samples = proc_queue.get()
