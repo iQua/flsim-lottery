@@ -60,12 +60,7 @@ class LotteryServer(Server):
             outputs=lottery_runner.desc.train_outputs)
 
         self.save_model(self.model, static_global_model_path)
-        
-        mask_path = static_global_model_path + f'/mask.pth'
-        #load mask
-        if os.path.exists(mask_path):
-            os.remove(mask_path)
-        #torch.save(Mask.ones_like(self.model), mask_path)
+    
 
         self.baseline_weights = fl_model.extract_weights(self.model)
 
@@ -363,9 +358,6 @@ class LotteryServer(Server):
         self.model.load_state_dict(torch.load(best_path))
         self.model.eval()
 
-        #get best global model mask and save to the static mask path (update with every round)
-        self.save_global_mask(
-            self.model, self.static_global_model_path+f'/mask.pth')
         # update static global model
         self.save_model(self.model, self.static_global_model_path)
         # backup the best global model to round directory
@@ -418,7 +410,7 @@ class LotteryServer(Server):
         self.model.eval()
 
         #get best global model mask and save to the static mask path(update with every round)
-        self.save_global_mask(
+        #self.save_global_mask(
             self.model, self.static_global_model_path+f'/mask.pth')
 
         # update static global model for next round
