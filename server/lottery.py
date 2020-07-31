@@ -465,6 +465,10 @@ class LotteryServer(Server):
             size = (1, 28, 28)
         if dataset_name == 'cifar10':
             size = (3, 32, 32)
+        if dataset_name == 'fashion_mnist':
+            size = (1, 28, 28)
+        else:
+            print("dataset name is wrong!")
 
         fpath = pth_path[:-4]+'summary'
         stdoutOrigin = sys.stdout

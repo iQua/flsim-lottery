@@ -23,6 +23,17 @@ def get_train_set(dataset_name):
         dataset = datasets.CIFAR10(root='./data', train=True, 
                                     download=True, transform=transform)
 
+    if(dataset_name == "fashion_mnist"):
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.1307], std=[0.3081])
+        ])
+        dataset = datasets.FashionMNIST(root='./data', train=True,
+                                       download=True, transform=transform)
+
+    else:
+        print("Error! dataset name is wrong.")
+
     return dataset
 
 def get_testloader(dataset_name, indices):
