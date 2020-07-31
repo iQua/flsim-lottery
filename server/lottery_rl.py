@@ -147,7 +147,7 @@ class RLLotteryServer(LotteryServer):
 
         accuracy = accuracy_dict[prune_level]
         logging.info(f'Selected level-{prune_level} model accuracy: '\
-            + '{:.2f}%\n'.format(100 * accuracy))
+            + '{:.2f}%'.format(100 * accuracy))
         
         return accuracy
           

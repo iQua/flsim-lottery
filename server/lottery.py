@@ -84,7 +84,7 @@ class LotteryServer(Server):
             
         self.clients = clients
 
-        logging.info('Download datasets if not exist...')
+        logging.info('Download datasets if not exist...\n')
         warmup_client = LTHClient(-1, self.config)
         warmup_client.download_datasets()
 

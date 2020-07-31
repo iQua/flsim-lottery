@@ -1,4 +1,9 @@
-
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+import torch.distributions as distributions
+import numpy as np
 
 
 class MLP(nn.Module):
@@ -15,7 +20,6 @@ class MLP(nn.Module):
         x = F.relu(x)
         x = self.fc_2(x)
         return x
-
 
 
 class ActorCritic(nn.Module):
