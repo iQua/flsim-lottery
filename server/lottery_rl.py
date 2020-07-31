@@ -9,10 +9,8 @@ from multiprocessing import Process, Queue
 
 import torch
 import torch.multiprocessing as mp
-from torchsummary import summary
-import torchvision
 
-from server import Server
+from server import LotteryServer
 from client.lth_client import LTHClient # pylint: disable=impoprt-error
 import utils.dists as dists  # pylint: disable=no-name-in-module
 import utils.fl_model as fl_model 
@@ -26,68 +24,14 @@ class RLLotteryServer(LotteryServer):
     """server for open_lth"""
 
     def __init__(self, config, env=None, agent=None):
-        super().__init__(config, env, agent)
-    
-
-    def boot(self):
-        logging.info('Booting {} server...'.format(self.config.server))
-
-        self.static_global_model_path = self.config.paths.model
-        
-        # Add fl_model to import path
-        sys.path.append(self.static_global_model_path)
-
-        #get server split and clients total indices
-        #server: server_indices, clients: label_idx_dict
-        self.generate_dataset_splits()
-        self.loading = self.config.data.loading
-        if self.loading == 'static':
-            self.get_clients_splits()
-        # Set up simulated server
-        self.load_model(self.static_global_model_path)
-        self.make_clients()
-
-
-    def load_model(self, static_global_model_path):
-
-        lottery_runner = runner_registry.get(
-            self.config.lottery_args.subcommand).create_from_args( \
-                self.config.lottery_args)
-
-        #set up global model
-        self.model = models_registry.get(
-            lottery_runner.desc.model_hparams, 
-            outputs=lottery_runner.desc.train_outputs)
-
-        self.save_model(self.model, static_global_model_path)
-    
-        self.baseline_weights = fl_model.extract_weights(self.model)
-
-        #extract flattened weights
-        if self.config.paths.reports:
-            self.saved_reports = {}
-            self.save_reports(0, []) 
-
-    #create clients without dataset assigned
-    def make_clients(self):
-
-        clients = []
-        
-        for client_id in range(self.config.clients.total):
-            
-            new_client = LTHClient(client_id, self.config)
-            clients.append(new_client)
-
-        logging.info('Total clients: {}'.format(len(clients)))
-            
-        self.clients = clients
-
-        logging.info('Download datasets if not exist...')
-        warmup_client = LTHClient(-1, self.config)
-        warmup_client.download_datasets()
+        super().__init__(config)
+        self.config.server = "RL Lottery"
 
 
     def probe(self):
+        logging.info('Probing all clients...')
+
+        self.set_params(0) # 0 indicates probing diretory
         self.configuration(self.clients)
 
         proc_queue = Queue()
@@ -104,73 +48,48 @@ class RLLotteryServer(LotteryServer):
 
         while not proc_queue.empty():
             client_id, data_folder, num_samples = proc_queue.get()
-            sample_client_dict[client_id].data_folder = data_folder
-            sample_client_dict[client_id].report.set_num_samples(num_samples)
+            all_client_dict[client_id].data_folder = data_folder
+            all_client_dict[client_id].report.set_num_samples(num_samples)
 
         self.testloader = get_testloader(
             self.config.lottery_args.dataset_name, self.server_indices) 
         
+        reports = self.reporting(self.clients)
 
+        tot_level = self.config.lottery_args.levels + 1
+        ep_num = int(self.config.lottery_args.training_steps[0:-2])
 
-        return self.get_global_model(sample_clients)
+        level_accuracy_per_client = {}
+        for client in self.clients:
+            level_accuracy_per_client[client.client_id] = []
+            unpruned_accuracy = 0
 
+            for lvl in range(tot_level):
+                lvl_accuracy = self.__get_lvl_accuracy(os.path.join(
+                    client.data_folder, f'level_{lvl}', 'main', 'logger'))                
 
-    #get indices list for a certain label distribution
-    def retrieve_indices(self, client_idx, overlap):
-        client_indices = []
-        for label, idx in self.label_idx_dict.items():
-            #already shuffle
-            random.shuffle(idx)
-            num = client_idx[self.labels.index(label)]
-            client_indices.extend(idx[:num])
-            if not overlap:
-                #delete already retrieved indices
-                idx = idx[num:]
-        return client_indices
-            
-
-    def get_indices(self, dataset,label):
-        indices =  []
-        for i in range(len(dataset.targets)):
-            if dataset.targets[i] == label:
-                indices.append(i)
-        return indices
-
-
-    def get_label_nums(self, tot_num):
-        #get number for each label list 
-        client_idx = []
-        if self.config.data.IID:
-            for label, idx in self.label_idx_dict.items():
-                client_idx.insert(self.labels.index(label), int(tot_num/len(self.labels)))
+                if lvl == 0: unpruned_accuracy = lvl_accuracy
+                
+                level_accuracy_per_client[client.client_id].append(\
+                    (lvl_accuracy - unpruned_accuracy) * 100)
         
-        else:
-            bias = self.config.data.bias["primary"]
-            secondary = self.config.data.bias["secondary"]
-            
-            pref = random.choice(self.labels)
-            majority = int(tot_num * bias)
-            minority = tot_num - majority
-            #for one client get partition
-            client_idx = get_partition(
-                self.labels, majority, minority, pref, bias, secondary)
+        return level_accuracy_per_client
 
-        return client_idx
+
+    def __get_lvl_accuracy(self, logger_path):
+        with open(logger_path, 'r') as logger_fd:
+            lines = logger_fd.readlines()
+
+        return float(lines[-3].split(',')[-1])
+
+
+    def round(self, round_id, prune_level, sample_clients, \
+            level_accuracy_per_client):
         
-
-    @staticmethod  
-    def get_dataset_num(dataset_name):
-        if dataset_name == "mnist":
-            return 60000
-        elif dataset_name == "cifar10":
-            return 50000
+        train_mode = self.config.lottery_args.subcommand
+        self.set_params(round_id) # 0 indicates probing diretory
         
-
-    def round(self):
-        sample_clients = self.selection()
-
         self.configuration(sample_clients)
-
         proc_queue = Queue()
         
         processes = [mp.Process(target=client.run, args=(proc_queue,)) \
@@ -191,21 +110,35 @@ class RLLotteryServer(LotteryServer):
         self.testloader = get_testloader(
             self.config.lottery_args.dataset_name, self.server_indices) 
         
-        return self.get_global_model(sample_clients)
+        reports = self.reporting(sample_clients)
+
+        tot_level = prune_level + 1
+        ep_num = int(self.config.lottery_args.training_steps[0:-2])
+
+        # update level_accuracy_per_client
+        for client in sample_clients:
+            unpruned_accuracy = 0
+
+            for lvl in range(tot_level):
+                lvl_accuracy = self.__get_lvl_accuracy(os.path.join(
+                    client.data_folder, f'level_{lvl}', 'main', 'logger'))                
+                
+                if lvl == 0: unpruned_accuracy = lvl_accuracy
+                
+                level_accuracy_per_client[client.client_id][lvl] = \
+                    (lvl_accuracy - unpruned_accuracy) * 100
+
+        return self.get_pruned_model(sample_clients, reports, prune_level)
 
 
     def get_pruned_model(self, sample_clients, reports, prune_level):
         # accuracy_dict = { level: global_model_accuracy }
-        accuracy_dict = self.__get_accuracy_per_level(sample_clients, reports)
+        accuracy_dict = self.get_accuracy_per_level(sample_clients, reports)
         selected_model_path = os.path.join(self.global_model_path_per_round, \
             'global', f'level_{prune_level}', 'model.pth')
         
         self.model.load_state_dict(torch.load(selected_model_path))
         self.model.eval()
-
-        #get best global model mask and save to the static mask path(update with every round)
-        #self.save_global_mask(
-            # self.model, self.static_global_model_path+f'/mask.pth')
 
         # update static global model for next round
         self.save_model(self.model, self.static_global_model_path)
@@ -227,8 +160,8 @@ class RLLotteryServer(LotteryServer):
         pass
 
 
-    def test_model_accuracy(self, model, updated_weights):
-        fl_model.load_weights(model, updated_weights)
-        accuracy = fl_model.test(model, self.testloader)
+    def is_done(self, round_id, current_accuracy):
+        rounds = self.config.fl.rounds
+        target_accuracy = self.config.fl.target_accuracy
 
-        return model, accuracy 
+        return (current_accuracy >= target_accuracy) or (round_id >= rounds)

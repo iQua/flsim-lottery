@@ -187,4 +187,5 @@ class LTHClient(Client):
         self.platform = platforms_registry.get(
             self.args.platform).create_from_args(self.args)
 
+        # /mnt/open_lth_data/timestamp_mode/
         self.platform.root = self.args.prefix_path

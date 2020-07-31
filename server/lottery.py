@@ -41,7 +41,7 @@ class LotteryServer(Server):
         #server: server_indices, clients: label_idx_dict
         self.generate_dataset_splits()
         self.loading = self.config.data.loading
-        if self.loading in ['static','dynamic_init']:
+        if self.loading in ['static', 'dynamic_init']:
             self.get_clients_splits()
 
         # Set up simulated server
@@ -290,7 +290,7 @@ class LotteryServer(Server):
         return accuracy
 
 
-    def __get_accuracy_per_level(self, sample_clients, reports):
+    def get_accuracy_per_level(self, sample_clients, reports):
 
         client_paths = [client.data_folder for client in sample_clients]
         tot_level = self.config.lottery_args.levels + 1
@@ -349,7 +349,7 @@ class LotteryServer(Server):
 
     def get_best_lottery(self, sample_clients, reports):
 
-        accuracy_dict = self.__get_accuracy_per_level(sample_clients, reports)       
+        accuracy_dict = self.get_accuracy_per_level(sample_clients, reports)       
 
         best_level = max(accuracy_dict, key=accuracy_dict.get)
         best_path = os.path.join(
@@ -404,7 +404,7 @@ class LotteryServer(Server):
         
     def get_pruned_model(self, sample_clients, reports, prune_level):
         # accuracy_dict = { level: global_model_accuracy }
-        accuracy_dict = self.__get_accuracy_per_level(sample_clients, reports)
+        accuracy_dict = self.get_accuracy_per_level(sample_clients, reports)
         selected_model_path = os.path.join(self.global_model_path_per_round, \
             'global', f'level_{prune_level}', 'model.pth')
         
@@ -476,7 +476,7 @@ class LotteryServer(Server):
 
         display = self.config.clients.display_data_distribution
         for i in range(len(sample_clients)):   
-            client = sample_clients[i]         
+            client = sample_clients[i]
             
             if self.loading in ['static', 'dynamic_init']:
                 dataset_indices = self.id_index_list[client.client_id]            
@@ -484,8 +484,7 @@ class LotteryServer(Server):
                 self.get_clients_splits()
                 dataset_indices = self.id_index_list[i]
             else:
-                self.get_clients_splits()
-                dataset_indices = self.id_index_list[i]
+                dataset_indices = self.id_index_list[client.client_id] 
 
             client.set_data_indices(dataset_indices)
             
