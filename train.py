@@ -121,18 +121,13 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
     
         sample_clients = rl_server.selection()
 
-        # state = [diff_accuracy for diff_accuracy \
-        #         in level_accuracy_per_client[client.client_id] \
-        #         for client in sample_clients]
         state = []
         for client in sample_clients:
             for diff_accuracy in level_accuracy_per_client[client.client_id]:
                 state.append(diff_accuracy)
 
         state.append(accuracy - pre_accuracy) # global model accuracy diff
-        
-
-        state = torch.FloatTensor(state)
+        state = torch.FloatTensor(state).reshape(1, -1)
         states.append(state)
 
         action_pred, value_pred = policy(state)
@@ -161,7 +156,7 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
         episode_reward += reward        
 
         if done: # Break loop when target accuracy is met
-            logging.info('Target accuracy reached.')
+            logging.info('Target accuracy reached.\n')
             break
     
     states = torch.cat(states)
@@ -183,7 +178,7 @@ def evaluate(policy):
     
     policy.eval()
     
-    rewards = []
+    actions = []
     done = False
     episode_reward = 0
 
@@ -203,9 +198,11 @@ def evaluate(policy):
     level_accuracy_per_client = rl_server.probe()
 
     logging.info(f'Probing clients: {level_accuracy_per_client}\n')
+    accuracy = 0
+    pre_accuracy = 0
 
     for round_id in range(1, rounds+1):
-        logging.info('**** Round {}/{} ****'.format(round_id, rounds))
+        logging.info('**** Evaluation Round {}/{} ****'.format(round_id, rounds))
     
         sample_clients = rl_server.selection()
         
@@ -215,8 +212,7 @@ def evaluate(policy):
                 state.append(diff_accuracy)
 
         state.append(accuracy - pre_accuracy) # global model accuracy diff
-        state = torch.FloatTensor(state)
-        states.append(state)
+        state = torch.FloatTensor(state).reshape(1, -1)
 
         with torch.no_grad():
             action_pred, _ = policy(state)
@@ -340,7 +336,8 @@ def main():
 
     train_rewards = []
     test_rewards = []
-
+    train_round_num = []
+    test_round_num = []
 
     # Set logging
     logging.basicConfig(
@@ -355,7 +352,7 @@ def main():
         policy_loss, value_loss, train_reward, train_round_id = fl_train(
             policy, optimizer, DISCOUNT_FACTOR, PPO_STEPS, PPO_CLIP)
         
-        test_reward, eval_round_id = evaluate(policy)
+        test_reward, test_round_id = evaluate(policy)
         
         train_rewards.append(train_reward)
         test_rewards.append(test_reward)
@@ -369,17 +366,17 @@ def main():
         
         if episode % PRINT_EVERY == 0:        
             logging.info(f'| Episode: {episode:3} | ', 
-            f'Mean Train Rewards: {train_reward:5.1f} | ', 
-            f'Mean Test Rewards: {test_rewards:5.1f} |',
-            f'Mean Train Round Num: {train_round_num:5.1f} |',
-            f'Mean Test Round Num: {test_round_num:5.1f} |')
+            f'Train Rewards: {train_reward:5.1f} | ', 
+            f'Test Rewards: {test_reward:5.1f} |',
+            f'Train Round Num: {train_round_id} |',
+            f'Test Round Num: {test_round_id} |\n')
         
         if mean_test_rewards >= REWARD_THRESHOLD:            
             logging.info(f'Reached reward threshold in {episode} episodes')
             break
 
-        
-        torch.save(policy.state_dict(), "./models/rl_anc_mnist_lenet.pth")
+        torch.save(policy.state_dict(), \
+            f'./models/rl_anc_mnist_lenet-{current_time}.pth')
             
  
 
