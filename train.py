@@ -113,7 +113,7 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
                 state.append(diff_accuracy)
 
         # global model accuracy diff
-        state.append(round((accuracy - pre_accuracy)*100, 2)) 
+        state.append(round((accuracy - pre_accuracy) * 10000, 2)) 
 
         logging.info(f'State: {state}')
 
@@ -141,7 +141,7 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
 
         done = target_accuracy and (accuracy >= target_accuracy)
 
-        reward = round((accuracy - target_accuracy)*100, 2) # negative value
+        reward = round((accuracy - target_accuracy) * 10000, 2) # negative value
         logging.info(f'Reward: {reward}')
 
         rewards.append(reward)
