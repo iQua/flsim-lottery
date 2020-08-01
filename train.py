@@ -142,7 +142,7 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
         done = target_accuracy and (accuracy >= target_accuracy)
 
         reward = round((accuracy - target_accuracy) * 10000, 2) # negative value
-        logging.info(f'Reward: {reward}')
+        logging.info(f'Reward: {reward}\n')
 
         rewards.append(reward)
         episode_reward += reward        
@@ -235,7 +235,7 @@ def evaluate(policy):
 
         reward = round((accuracy - target_accuracy) * 10000, 2) # negative value
 
-        logging.info(f'Reward: {reward}')
+        logging.info(f'Reward: {reward}\n')
 
         episode_reward += reward        
 

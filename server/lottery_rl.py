@@ -87,6 +87,8 @@ class RLLotteryServer(LotteryServer):
             level_accuracy_per_client):
         
         train_mode = self.config.lottery_args.subcommand
+        self.config.lottery_args.levels = prune_level # set client prune level
+        
         self.set_params(round_id) # 0 indicates probing diretory
         
         self.configuration(sample_clients)
