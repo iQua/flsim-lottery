@@ -22,6 +22,25 @@ class MLP(nn.Module):
         return x
 
 
+# class MLP(nn.Module):
+#     def __init__(self, input_dim, hidden_dim, output_dim, dropout = 0.1):
+#         super().__init__()
+        
+#         self.net = nn.Sequential(
+#             nn.Linear(input_dim, hidden_dim),
+#             nn.Dropout(dropout),
+#             nn.PReLU(),
+#             nn.Linear(hidden_dim, hidden_dim),
+#             nn.Dropout(dropout),
+#             nn.PReLU(),
+#             nn.Linear(hidden_dim, output_dim)
+#         )
+        
+#     def forward(self, x):
+#         x = self.net(x)
+#         return x
+
+
 class ActorCritic(nn.Module):
     def __init__(self, actor, critic):
         super().__init__()

@@ -71,7 +71,7 @@ class RLLotteryServer(LotteryServer):
                 if lvl == 0: unpruned_accuracy = lvl_accuracy
                 
                 level_accuracy_per_client[client.client_id].append(\
-                    (lvl_accuracy - unpruned_accuracy) * 100)
+                    round((lvl_accuracy - unpruned_accuracy) * 100, 2))
         
         return level_accuracy_per_client
 
@@ -80,7 +80,7 @@ class RLLotteryServer(LotteryServer):
         with open(logger_path, 'r') as logger_fd:
             lines = logger_fd.readlines()
 
-        return float(lines[-3].split(',')[-1])
+        return float(lines[-3].split(',')[-1])*100
 
 
     def round(self, round_id, prune_level, sample_clients, \
@@ -126,7 +126,7 @@ class RLLotteryServer(LotteryServer):
                 if lvl == 0: unpruned_accuracy = lvl_accuracy
                 
                 level_accuracy_per_client[client.client_id][lvl] = \
-                    (lvl_accuracy - unpruned_accuracy) * 100
+                    round((lvl_accuracy - unpruned_accuracy) * 100, 2)
 
         return self.get_pruned_model(sample_clients, reports, prune_level)
 

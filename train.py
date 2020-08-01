@@ -97,21 +97,7 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
     episode_reward = 0
     done = False
     
-    # Read configuration file
-    fl_config = config.Config(args.config, args.log)
-
-    rounds = fl_config.fl.rounds
-    target_accuracy = fl_config.fl.target_accuracy
-
-    # Initialize server
-    rl_server = server.RLLotteryServer(fl_config) 
-
-    rl_server.boot()
-
-    # probe clients
-    level_accuracy_per_client = rl_server.probe()
-
-    logging.info(f'Probing clients: {level_accuracy_per_client}\n')
+    rl_server, target_accuracy, rounds, level_accuracy_per_client = reset_fl()
 
     accuracy = 0
     pre_accuracy = 0
@@ -126,7 +112,11 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
             for diff_accuracy in level_accuracy_per_client[client.client_id]:
                 state.append(diff_accuracy)
 
-        state.append(accuracy - pre_accuracy) # global model accuracy diff
+        # global model accuracy diff
+        state.append(round((accuracy - pre_accuracy)*100, 2)) 
+
+        logging.info(f'State: {state}')
+
         state = torch.FloatTensor(state).reshape(1, -1)
         states.append(state)
 
@@ -151,7 +141,9 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
 
         done = target_accuracy and (accuracy >= target_accuracy)
 
-        reward = accuracy - target_accuracy # negative value
+        reward = round((accuracy - target_accuracy)*100, 2) # negative value
+        logging.info(f'Reward: {reward}')
+
         rewards.append(reward)
         episode_reward += reward        
 
@@ -174,14 +166,7 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
     return policy_loss, value_loss, episode_reward, round_id
 
 
-def evaluate(policy):
-    
-    policy.eval()
-    
-    actions = []
-    done = False
-    episode_reward = 0
-
+def reset_fl():
     # Read configuration file
     fl_config = config.Config(args.config, args.log)
 
@@ -198,6 +183,19 @@ def evaluate(policy):
     level_accuracy_per_client = rl_server.probe()
 
     logging.info(f'Probing clients: {level_accuracy_per_client}\n')
+
+    return rl_server, target_accuracy, rounds, level_accuracy_per_client
+
+
+def evaluate(policy):
+    
+    policy.eval()
+
+    done = False
+    episode_reward = 0
+
+    rl_server, target_accuracy, rounds, level_accuracy_per_client = reset_fl()
+
     accuracy = 0
     pre_accuracy = 0
 
@@ -211,7 +209,10 @@ def evaluate(policy):
             for diff_accuracy in level_accuracy_per_client[client.client_id]:
                 state.append(diff_accuracy)
 
-        state.append(accuracy - pre_accuracy) # global model accuracy diff
+        # global model accuracy diff
+        state.append(round((accuracy - pre_accuracy)*100, 2)) 
+        logging.info(f'State: {state}')
+
         state = torch.FloatTensor(state).reshape(1, -1)
 
         with torch.no_grad():
@@ -220,7 +221,7 @@ def evaluate(policy):
 
         action = torch.argmax(action_prob, dim = -1)
 
-        logging.info(f'Choose pruning level {action.item()}')             
+        logging.info(f'Choose pruning level {action.item()}')           
 
         pre_accuracy = accuracy # backup current accuracy
         # one round FL training
@@ -232,7 +233,10 @@ def evaluate(policy):
 
         done = target_accuracy and (accuracy >= target_accuracy)
 
-        reward = accuracy - target_accuracy # negative value
+        reward = round((accuracy - target_accuracy)*100, 2) # negative value
+
+        logging.info(f'Reward: {reward}')
+
         episode_reward += reward        
 
         if done: # Break loop when target accuracy is met
@@ -263,7 +267,9 @@ def calculate_advantages(returns, values, normalize = True):
 
 def update_policy(policy, states, actions, log_prob_actions, \
         advantages, returns, optimizer, ppo_steps, ppo_clip):
-    
+
+    logging.info('Updating policy...')
+
     total_policy_loss = 0 
     total_value_loss = 0
     
@@ -306,7 +312,7 @@ def update_policy(policy, states, actions, log_prob_actions, \
 
 
 def main():
-    MAX_EPISODES = 500
+    MAX_EPISODES = 10
     DISCOUNT_FACTOR = 0.99
     N_TRIALS = 25
     REWARD_THRESHOLD = 475
@@ -324,7 +330,7 @@ def main():
 
     policy = ActorCritic(actor, critic)
 
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.001
     optimizer = optim.Adam(policy.parameters(), lr = LEARNING_RATE)
 
     def init_weights(m):
@@ -349,6 +355,7 @@ def main():
     for episode in range(1, MAX_EPISODES+1):
         
         logging.info(f'Episode {episode}')
+
         policy_loss, value_loss, train_reward, train_round_id = fl_train(
             policy, optimizer, DISCOUNT_FACTOR, PPO_STEPS, PPO_CLIP)
         
@@ -365,11 +372,12 @@ def main():
         mean_test_round_num = np.mean(test_round_num)
         
         if episode % PRINT_EVERY == 0:        
-            logging.info(f'| Episode: {episode:3} | ', 
-            f'Train Rewards: {train_reward:5.1f} | ', 
-            f'Test Rewards: {test_reward:5.1f} |',
-            f'Train Round Num: {train_round_id} |',
-            f'Test Round Num: {test_round_id} |\n')
+            logging.info(
+                f'| Episode: {episode:3} | '\
+                +f'Train Rewards: {train_reward:5.1f} | '\
+                +f'Test Rewards: {test_reward:5.1f} | '\
+                +f'Train Round Num: {train_round_id} | '\
+                +f'Test Round Num: {test_round_id} |\n')
         
         if mean_test_rewards >= REWARD_THRESHOLD:            
             logging.info(f'Reached reward threshold in {episode} episodes')
