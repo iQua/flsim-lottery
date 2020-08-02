@@ -113,7 +113,7 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
                 state.append(diff_accuracy)
 
         # global model accuracy diff
-        state.append(round((accuracy - pre_accuracy) * 10000, 2)) 
+        state.append(round((accuracy - pre_accuracy) * 10000, 2))
 
         logging.info(f'State: {state}')
 
@@ -169,7 +169,9 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
 def reset_fl():
     # Read configuration file
     fl_config = config.Config(args.config, args.log)
-
+    
+    os.remove(os.path.join(fl_config.paths.model, 'global.pth'))
+    
     rounds = fl_config.fl.rounds
     target_accuracy = fl_config.fl.target_accuracy
 
@@ -320,10 +322,9 @@ def main():
     PPO_STEPS = 5
     PPO_CLIP = 0.2
 
-
-    INPUT_DIM = 7
+    INPUT_DIM = 31
     HIDDEN_DIM = 128
-    OUTPUT_DIM = 2
+    OUTPUT_DIM = 3
 
     actor = MLP(INPUT_DIM, HIDDEN_DIM, OUTPUT_DIM)
     critic = MLP(INPUT_DIM, HIDDEN_DIM, 1)

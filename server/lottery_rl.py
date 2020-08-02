@@ -88,7 +88,7 @@ class RLLotteryServer(LotteryServer):
         
         train_mode = self.config.lottery_args.subcommand
         self.config.lottery_args.levels = prune_level # set client prune level
-        
+
         self.set_params(round_id) # 0 indicates probing diretory
         
         self.configuration(sample_clients)
@@ -145,7 +145,7 @@ class RLLotteryServer(LotteryServer):
         # update static global model for next round
         self.save_model(self.model, self.static_global_model_path)
         # backup the seleted global model to round directory
-        self.save_model(self.model, self.global_model_path_per_round)
+        # self.save_model(self.model, self.global_model_path_per_round)
 
         accuracy = accuracy_dict[prune_level]
         logging.info(f'Selected level-{prune_level} model accuracy: '\
