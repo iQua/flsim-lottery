@@ -166,8 +166,8 @@ def fl_train(fl_server, policy, optimizer, discount_factor, ppo_steps, ppo_clip)
         policy, states, actions, log_prob_actions, \
         advantages, returns, optimizer, ppo_steps, ppo_clip)
 
-    logging.info(f'Init client dict: {fl_server.client_level_accuracy_dict}')
-    logging.info(f'Runtime client dict: {client_level_accuracy_dict}')
+    logging.debug(f'Init client dict: {fl_server.client_level_accuracy_dict}')
+    logging.debug(f'Runtime client dict: {client_level_accuracy_dict}')
 
     return policy_loss, value_loss, episode_reward, round_id
 
