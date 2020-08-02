@@ -97,7 +97,7 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
     episode_reward = 0
     done = False
     
-    rl_server, target_accuracy, rounds, level_accuracy_per_client = reset_fl()
+    reset_fl_server(fl_server)
 
     accuracy = 0
     pre_accuracy = 0
@@ -313,8 +313,38 @@ def update_policy(policy, states, actions, log_prob_actions, \
     return total_policy_loss / ppo_steps, total_value_loss / ppo_steps
 
 
+def create_fl_server(fl_config):
+    
+    if os.path.exists(os.path.join(fl_config.paths.model, 'global.pth')):
+        os.remove(os.path.join(fl_config.paths.model, 'global.pth'))
+    
+    rounds = fl_config.fl.rounds
+    target_accuracy = fl_config.fl.target_accuracy
+
+    # Initialize server
+    fl_server = server.RLLotteryServer(fl_config) 
+    # env = Environment(rl_server)
+
+    fl_server.boot()
+
+    # probe clients
+    level_accuracy_per_client = rl_server.probe()
+
+    logging.info(f'Probing clients: {level_accuracy_per_client}\n')
+
+    return fl_server, target_accuracy, rounds, level_accuracy_per_client
+
+
 def main():
-    MAX_EPISODES = 100
+    # Read configuration file
+    config = config.Config(args.config, args.log)
+
+    fl_server, init_level_accuracy_per_client = create_fl_server(config)
+    
+    pruning_levels = config.fl.levels
+    client_num = len(level_accuracy_per_client.keys())
+
+    MAX_EPISODES = 1000
     DISCOUNT_FACTOR = 0.99
     N_TRIALS = 25
     REWARD_THRESHOLD = 475
@@ -323,9 +353,9 @@ def main():
     PPO_STEPS = 5
     PPO_CLIP = 0.2
 
-    INPUT_DIM = 4
-    HIDDEN_DIM = 128
-    OUTPUT_DIM = 3
+    INPUT_DIM = client_num*(pruning_levels+1)+1
+    HIDDEN_DIM = 256
+    OUTPUT_DIM = pruning_levels+1
 
     actor = MLP(INPUT_DIM, HIDDEN_DIM, OUTPUT_DIM)
     critic = MLP(INPUT_DIM, HIDDEN_DIM, 1)
@@ -354,28 +384,31 @@ def main():
         format='[%(threadName)s][%(asctime)s]: %(message)s', 
         level=logging.INFO, datefmt='%H:%M:%S')
 
+    
+
     for episode in range(1, MAX_EPISODES+1):
         
         logging.info(f'Episode {episode}')
 
         policy_loss, value_loss, train_reward, train_round_id = fl_train(
-            policy, optimizer, DISCOUNT_FACTOR, PPO_STEPS, PPO_CLIP)
-        
+            fl_server, init_level_accuracy_per_client, policy, optimizer, \
+            DISCOUNT_FACTOR, PPO_STEPS, PPO_CLIP)
 
         if episode % EVAL_EVERY == 0:        
-            test_reward, test_round_id = evaluate(policy)
-        
+            test_reward, test_round_id = evaluate(
+                fl_server, init_level_accuracy_per_client, policy)
+            
+            test_rewards.append(test_reward)
+            test_round_num.append(test_round_id)
+            mean_test_rewards = np.mean(test_rewards[-N_TRIALS:])
+            mean_test_round_num = np.mean(test_round_num)
+
         train_rewards.append(train_reward)
-        test_rewards.append(test_reward)
         train_round_num.append(train_round_id)
-        test_round_num.append(test_round_id)
         
         mean_train_rewards = np.mean(train_rewards[-N_TRIALS:])
-        mean_test_rewards = np.mean(test_rewards[-N_TRIALS:])
         mean_train_round_num = np.mean(train_round_num)
-        mean_test_round_num = np.mean(test_round_num)
         
-
 
         if episode % PRINT_EVERY == 0:        
             logging.info(

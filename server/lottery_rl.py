@@ -34,7 +34,7 @@ class RLLotteryServer(LotteryServer):
         self.set_params(0) # 0 indicates probing diretory
         self.configuration(self.clients)
 
-        with Pool(20) as pool:
+        with Pool() as pool:
             processes = [pool.apply_async(client.probe, ()) \
                 for client in self.clients]
             proc_results = [proc.get() for proc in processes]
