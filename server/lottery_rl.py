@@ -133,27 +133,6 @@ class RLLotteryServer(LotteryServer):
         return self.get_pruned_model(sample_clients, reports, prune_level)
 
 
-    def get_pruned_model(self, sample_clients, reports, prune_level):
-        # accuracy_dict = { level: global_model_accuracy }
-        accuracy_dict = self.get_accuracy_per_level(sample_clients, reports)
-        selected_model_path = os.path.join(self.global_model_path_per_round, \
-            'global', f'level_{prune_level}', 'model.pth')
-        
-        self.model.load_state_dict(torch.load(selected_model_path))
-        self.model.eval()
-
-        # update static global model for next round
-        self.save_model(self.model, self.static_global_model_path)
-        # backup the seleted global model to round directory
-        # self.save_model(self.model, self.global_model_path_per_round)
-
-        accuracy = accuracy_dict[prune_level]
-        logging.info(f'Selected level-{prune_level} model accuracy: '\
-            + '{:.2f}%'.format(100 * accuracy))
-        
-        return accuracy
-          
-
     def train_best_model_rl(self, sample_clients, reports):
         pass
     

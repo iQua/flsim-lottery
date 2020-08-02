@@ -136,8 +136,7 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
         accuracy = rl_server.round(
             round_id, action.item(), sample_clients, level_accuracy_per_client)
 
-        logging.info(f'Round {round_id} accuracy: {accuracy}')
-        logging.info(f'Clients: {level_accuracy_per_client}\n')
+        logging.info(f'Clients: {level_accuracy_per_client}')
 
         done = target_accuracy and (accuracy >= target_accuracy)
 
@@ -170,7 +169,8 @@ def reset_fl():
     # Read configuration file
     fl_config = config.Config(args.config, args.log)
     
-    os.remove(os.path.join(fl_config.paths.model, 'global.pth'))
+    if os.path.exists(os.path.join(fl_config.paths.model, 'global.pth')):
+        os.remove(os.path.join(fl_config.paths.model, 'global.pth'))
     
     rounds = fl_config.fl.rounds
     target_accuracy = fl_config.fl.target_accuracy
@@ -314,15 +314,16 @@ def update_policy(policy, states, actions, log_prob_actions, \
 
 
 def main():
-    MAX_EPISODES = 10
+    MAX_EPISODES = 100
     DISCOUNT_FACTOR = 0.99
     N_TRIALS = 25
     REWARD_THRESHOLD = 475
     PRINT_EVERY = 1
+    EVAL_EVERY = 5
     PPO_STEPS = 5
     PPO_CLIP = 0.2
 
-    INPUT_DIM = 31
+    INPUT_DIM = 4
     HIDDEN_DIM = 128
     OUTPUT_DIM = 3
 
@@ -360,7 +361,9 @@ def main():
         policy_loss, value_loss, train_reward, train_round_id = fl_train(
             policy, optimizer, DISCOUNT_FACTOR, PPO_STEPS, PPO_CLIP)
         
-        test_reward, test_round_id = evaluate(policy)
+
+        if episode % EVAL_EVERY == 0:        
+            test_reward, test_round_id = evaluate(policy)
         
         train_rewards.append(train_reward)
         test_rewards.append(test_reward)
@@ -372,12 +375,18 @@ def main():
         mean_train_round_num = np.mean(train_round_num)
         mean_test_round_num = np.mean(test_round_num)
         
+
+
         if episode % PRINT_EVERY == 0:        
             logging.info(
                 f'| Episode: {episode:3} | '\
                 +f'Train Rewards: {train_reward:5.1f} | '\
+                +f'Train Round Num: {train_round_id} |\n')
+        
+        if episode % EVAL_EVERY == 0:
+            logging.info(
+                f'| Episode: {episode:3} | '\
                 +f'Test Rewards: {test_reward:5.1f} | '\
-                +f'Train Round Num: {train_round_id} | '\
                 +f'Test Round Num: {test_round_id} |\n')
         
         if mean_test_rewards >= REWARD_THRESHOLD:            

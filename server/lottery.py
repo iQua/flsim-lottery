@@ -290,7 +290,7 @@ class LotteryServer(Server):
         return accuracy
 
 
-    def get_accuracy_per_level(self, sample_clients, reports):
+    def get_accuracy_per_level(self, sample_clients, reports, prune_level=None):
 
         client_paths = [client.data_folder for client in sample_clients]
         tot_level = self.config.lottery_args.levels + 1
@@ -331,8 +331,13 @@ class LotteryServer(Server):
             model_path = os.path.join(self.global_model_path_per_round, \
                 'global', f'level_{i}')
 
-            # backup global model of different levels to round directory
-            self.save_model(base_model, model_path, f'model.pth')    
+            if prune_level: # If specify level, only save this level model
+                if prune_level == i: 
+                    # backup global model of different levels to round directory
+                    self.save_model(base_model, model_path, f'model.pth')
+            else:
+                # backup global model of different levels to round directory
+                self.save_model(base_model, model_path, f'model.pth')
 
             #save model summary and sparsity report
             self.save_model_summary(
@@ -404,7 +409,9 @@ class LotteryServer(Server):
         
     def get_pruned_model(self, sample_clients, reports, prune_level):
         # accuracy_dict = { level: global_model_accuracy }
-        accuracy_dict = self.get_accuracy_per_level(sample_clients, reports)
+        accuracy_dict = self.get_accuracy_per_level(
+            sample_clients, reports, prune_level)
+
         selected_model_path = os.path.join(self.global_model_path_per_round, \
             'global', f'level_{prune_level}', 'model.pth')
         
@@ -418,11 +425,11 @@ class LotteryServer(Server):
         # update static global model for next round
         self.save_model(self.model, self.static_global_model_path)
         # backup the seleted global model to round directory
-        self.save_model(self.model, self.global_model_path_per_round)
+        # self.save_model(self.model, self.global_model_path_per_round)
 
         accuracy = accuracy_dict[prune_level]
         logging.info(f'Selected level-{prune_level} model accuracy: '\
-            + '{:.2f}%\n'.format(100 * accuracy))
+            + '{:.2f}%'.format(100 * accuracy))
         
         return accuracy
           
@@ -463,8 +470,12 @@ class LotteryServer(Server):
             size = (1, 28, 28)
         if dataset_name == 'cifar10':
             size = (3, 32, 32)
-
+        
         fpath = pth_path[:-4]+'summary'
+
+        if not os.path.exists(fpath[:-9]):
+            os.makedirs(fpath[:-9])
+
         stdoutOrigin = sys.stdout
         sys.stdout = open(fpath, 'w+')
         summary(model.to(device), size)
