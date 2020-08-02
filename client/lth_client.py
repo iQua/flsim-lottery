@@ -169,7 +169,9 @@ class LTHClient(Client):
         self.report.set_num_samples(len(self.dataset_indices))
         self.report.weights = weights
 
-        queue.put((self.client_id, self.data_folder, len(self.dataset_indices)))
+        # queue.put((self.client_id, self.data_folder, len(self.dataset_indices)))
+        return (self.client_id, self.data_folder, len(self.dataset_indices))
+
 
 
     def test(self):
