@@ -45,11 +45,11 @@ class LotteryServer(Server):
             self.get_clients_splits()
 
         # Set up simulated server
-        self.load_model(self.static_global_model_path)
+        self.init_model(self.static_global_model_path)
         self.make_clients()
 
 
-    def load_model(self, static_global_model_path):
+    def init_model(self, static_global_model_path):
 
         lottery_runner = runner_registry.get(
             self.config.lottery_args.subcommand).create_from_args( \
@@ -61,8 +61,6 @@ class LotteryServer(Server):
             outputs=lottery_runner.desc.train_outputs)
 
         self.save_model(self.model, static_global_model_path)
-    
-
         self.baseline_weights = fl_model.extract_weights(self.model)
 
         #extract flattened weights

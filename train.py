@@ -34,7 +34,7 @@ def current_time():
     return datetime_NY.strftime("%m_%d_%H:%M:%S")
 
 
-def calculate_advantages(returns, values, normalize = True):
+def calculate_advantages(returns, values, normalize=True):
     advantages = returns - values
     if normalize:        
         advantages = (advantages - advantages.mean()) / advantages.std()        
@@ -85,7 +85,12 @@ def update_policy(policy, states, actions, log_prob_actions, \
     return total_policy_loss / ppo_steps, total_value_loss / ppo_steps
 
 
-def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
+def fl_train(fl_server, policy, optimizer, discount_factor, ppo_steps, ppo_clip):
+
+    # copy client profile
+    client_level_accuracy_dict = fl_server.client_level_accuracy_dict.copy()
+    rounds = fl_server.config.fl.rounds
+    target_accuracy = fl_server.config.fl.target_accuracy
 
     policy.train()
 
@@ -97,19 +102,17 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
     episode_reward = 0
     done = False
     
-    reset_fl_server(fl_server)
-
     accuracy = 0
     pre_accuracy = 0
 
     for round_id in range(1, rounds+1):
         logging.info('**** Round {}/{} ****'.format(round_id, rounds))
     
-        sample_clients = rl_server.selection()
+        sample_clients = fl_server.selection()
 
         state = []
         for client in sample_clients:
-            for diff_accuracy in level_accuracy_per_client[client.client_id]:
+            for diff_accuracy in client_level_accuracy_dict[client.client_id]:
                 state.append(diff_accuracy)
 
         # global model accuracy diff
@@ -133,16 +136,15 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
 
         pre_accuracy = accuracy # backup current accuracy
         # one round FL training
-        accuracy = rl_server.round(
-            round_id, action.item(), sample_clients, level_accuracy_per_client)
+        accuracy = fl_server.round(
+            round_id, action.item(), sample_clients, client_level_accuracy_dict)
 
-        logging.info(f'Clients: {level_accuracy_per_client}')
+        logging.info(f'Clients: {client_level_accuracy_dict}')
 
         done = target_accuracy and (accuracy >= target_accuracy)
 
-        reward = round((accuracy - target_accuracy) * 10000, 2) # negative value
+        reward = calculate_reward(accuracy, target_accuracy) # negative value
         logging.info(f'Reward: {reward}\n')
-
         rewards.append(reward)
         episode_reward += reward        
 
@@ -165,50 +167,29 @@ def fl_train(policy, optimizer, discount_factor, ppo_steps, ppo_clip):
     return policy_loss, value_loss, episode_reward, round_id
 
 
-def reset_fl():
-    # Read configuration file
-    fl_config = config.Config(args.config, args.log)
-    
-    if os.path.exists(os.path.join(fl_config.paths.model, 'global.pth')):
-        os.remove(os.path.join(fl_config.paths.model, 'global.pth'))
-    
-    rounds = fl_config.fl.rounds
-    target_accuracy = fl_config.fl.target_accuracy
-
-    # Initialize server
-    rl_server = server.RLLotteryServer(fl_config) 
-    # env = Environment(rl_server)
-
-    rl_server.boot()
-
-    # probe clients
-    level_accuracy_per_client = rl_server.probe()
-
-    logging.info(f'Probing clients: {level_accuracy_per_client}\n')
-
-    return rl_server, target_accuracy, rounds, level_accuracy_per_client
-
-
-def evaluate(policy):
+def evaluate(fl_server, policy):
     
     policy.eval()
 
     done = False
     episode_reward = 0
 
-    rl_server, target_accuracy, rounds, level_accuracy_per_client = reset_fl()
-
+    # copy client profile
+    client_level_accuracy_dict = fl_server.client_level_accuracy_dict.copy()
+    rounds = fl_server.config.fl.rounds
+    target_accuracy = fl_server.config.fl.target_accuracy
+    
     accuracy = 0
     pre_accuracy = 0
 
     for round_id in range(1, rounds+1):
         logging.info('**** Evaluation Round {}/{} ****'.format(round_id, rounds))
     
-        sample_clients = rl_server.selection()
+        sample_clients = fl_server.selection()
         
         state = []
         for client in sample_clients:
-            for diff_accuracy in level_accuracy_per_client[client.client_id]:
+            for diff_accuracy in client_level_accuracy_dict[client.client_id]:
                 state.append(diff_accuracy)
 
         # global model accuracy diff
@@ -227,18 +208,16 @@ def evaluate(policy):
 
         pre_accuracy = accuracy # backup current accuracy
         # one round FL training
-        accuracy = rl_server.round(
-            round_id, action.item(), sample_clients, level_accuracy_per_client)
+        accuracy = fl_server.round(
+            round_id, action.item(), sample_clients, client_level_accuracy_dict)
 
-        logging.info(f'Round {round_id} accuracy: {accuracy}')
-        logging.info(f'Clients: {level_accuracy_per_client}')
+        # logging.info(f'Round {round_id} accuracy: {accuracy}')
+        logging.info(f'Clients: {client_level_accuracy_dict}')
 
         done = target_accuracy and (accuracy >= target_accuracy)
 
-        reward = round((accuracy - target_accuracy) * 10000, 2) # negative value
-
+        reward = calculate_reward(accuracy, target_accuracy) # negative value
         logging.info(f'Reward: {reward}\n')
-
         episode_reward += reward        
 
         if done: # Break loop when target accuracy is met
@@ -248,7 +227,11 @@ def evaluate(policy):
     return episode_reward, round_id
 
 
-def calculate_returns(rewards, discount_factor, normalize = True):
+def calculate_reward(accuracy, target_accuracy):
+    return round((accuracy - target_accuracy) * 1000, 2)
+
+
+def calculate_returns(rewards, discount_factor, normalize=True):
     returns = []
     R = 0    
     for r in reversed(rewards):
@@ -260,7 +243,7 @@ def calculate_returns(rewards, discount_factor, normalize = True):
     return returns
 
 
-def calculate_advantages(returns, values, normalize = True):
+def calculate_advantages(returns, values, normalize=True):
     advantages = returns - values    
     if normalize:        
         advantages = (advantages - advantages.mean()) / advantages.std()        
@@ -270,7 +253,7 @@ def calculate_advantages(returns, values, normalize = True):
 def update_policy(policy, states, actions, log_prob_actions, \
         advantages, returns, optimizer, ppo_steps, ppo_clip):
 
-    logging.info('Updating policy...')
+    logging.info('Updating policy...\n')
 
     total_policy_loss = 0 
     total_value_loss = 0
@@ -314,13 +297,17 @@ def update_policy(policy, states, actions, log_prob_actions, \
 
 
 def create_fl_server(fl_config):
+    # Set logging
+    logging.basicConfig(
+        filename=os.path.join(
+            "/mnt/open_lth_data", 'RL-'+current_time()+'.logger.log'), 
+        format='[%(asctime)s][%(levelname)s]: %(message)s', 
+        level=logging.INFO, datefmt='%H:%M:%S')
     
+    # Clean up global model file saved from last run
     if os.path.exists(os.path.join(fl_config.paths.model, 'global.pth')):
         os.remove(os.path.join(fl_config.paths.model, 'global.pth'))
     
-    rounds = fl_config.fl.rounds
-    target_accuracy = fl_config.fl.target_accuracy
-
     # Initialize server
     fl_server = server.RLLotteryServer(fl_config) 
     # env = Environment(rl_server)
@@ -328,21 +315,22 @@ def create_fl_server(fl_config):
     fl_server.boot()
 
     # probe clients
-    level_accuracy_per_client = rl_server.probe()
+    fl_server.probe()
 
-    logging.info(f'Probing clients: {level_accuracy_per_client}\n')
+    logging.info(f'Probing clients: {fl_server.client_level_accuracy_dict}\n')
 
-    return fl_server, target_accuracy, rounds, level_accuracy_per_client
+    return fl_server
 
 
 def main():
     # Read configuration file
-    config = config.Config(args.config, args.log)
+    fl_config = config.Config(args.config, args.log)
 
-    fl_server, init_level_accuracy_per_client = create_fl_server(config)
-    
-    pruning_levels = config.fl.levels
-    client_num = len(level_accuracy_per_client.keys())
+    fl_server = create_fl_server(fl_config)
+    current_run_time = current_time()
+
+    pruning_levels = fl_config.lottery["levels"]
+    selected_client_num = fl_config.clients.per_round
 
     MAX_EPISODES = 1000
     DISCOUNT_FACTOR = 0.99
@@ -353,7 +341,7 @@ def main():
     PPO_STEPS = 5
     PPO_CLIP = 0.2
 
-    INPUT_DIM = client_num*(pruning_levels+1)+1
+    INPUT_DIM = selected_client_num*(pruning_levels+1)+1
     HIDDEN_DIM = 256
     OUTPUT_DIM = pruning_levels+1
 
@@ -377,26 +365,18 @@ def main():
     train_round_num = []
     test_round_num = []
 
-    # Set logging
-    logging.basicConfig(
-        filename=os.path.join(
-            "/mnt/open_lth_data", 'RL-'+current_time()+'.logger.log'), 
-        format='[%(threadName)s][%(asctime)s]: %(message)s', 
-        level=logging.INFO, datefmt='%H:%M:%S')
-
-    
-
     for episode in range(1, MAX_EPISODES+1):
         
         logging.info(f'Episode {episode}')
 
-        policy_loss, value_loss, train_reward, train_round_id = fl_train(
-            fl_server, init_level_accuracy_per_client, policy, optimizer, \
-            DISCOUNT_FACTOR, PPO_STEPS, PPO_CLIP)
+        fl_server.reset()
 
-        if episode % EVAL_EVERY == 0:        
-            test_reward, test_round_id = evaluate(
-                fl_server, init_level_accuracy_per_client, policy)
+        policy_loss, value_loss, train_reward, train_round_id = fl_train(
+            fl_server, policy, optimizer, DISCOUNT_FACTOR, PPO_STEPS, PPO_CLIP)
+
+        if episode % EVAL_EVERY == 0:
+            fl_server.reset()        
+            test_reward, test_round_id = evaluate(fl_server, policy)
             
             test_rewards.append(test_reward)
             test_round_num.append(test_round_id)
@@ -410,7 +390,7 @@ def main():
         mean_train_round_num = np.mean(train_round_num)
         
 
-        if episode % PRINT_EVERY == 0:        
+        if episode % PRINT_EVERY == 0:
             logging.info(
                 f'| Episode: {episode:3} | '\
                 +f'Train Rewards: {train_reward:5.1f} | '\
@@ -422,15 +402,15 @@ def main():
                 +f'Test Rewards: {test_reward:5.1f} | '\
                 +f'Test Round Num: {test_round_id} |\n')
         
-        if mean_test_rewards >= REWARD_THRESHOLD:            
-            logging.info(f'Reached reward threshold in {episode} episodes')
-            break
-
-        torch.save(policy.state_dict(), \
-            f'./models/rl_anc_mnist_lenet-{current_time}.pth')
+            if mean_test_rewards >= REWARD_THRESHOLD:            
+                logging.info(f'Reached reward threshold in {episode} episodes')
+                break
+        
+        
+        torch.save(policy.state_dict(), os.path.join(fl_config.paths.model, \
+                f'rl-{fl_config.lottery["model_name"]}-{current_run_time}.pth'))
             
  
-
 if __name__ == "__main__":
     torch.multiprocessing.set_start_method("spawn")
     main()

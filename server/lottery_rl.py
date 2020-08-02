@@ -28,6 +28,18 @@ class RLLotteryServer(LotteryServer):
         self.config.server = "RL Lottery"
 
 
+    def reset(self):
+        logging.info('Reset FL Server...')
+
+        self.init_run_path() # re-initialize current run path
+
+        # Clean up global model file saved from last run
+        if os.path.exists(os.path.join(self.config.paths.model, 'global.pth')):
+            os.remove(os.path.join(self.config.paths.model, 'global.pth'))
+        
+        self.init_model(self.static_global_model_path)
+
+
     def probe(self):
         logging.info('Probing all clients...')
 
@@ -55,9 +67,10 @@ class RLLotteryServer(LotteryServer):
         tot_level = self.config.lottery_args.levels + 1
         ep_num = int(self.config.lottery_args.training_steps[0:-2])
 
-        level_accuracy_per_client = {}
+        self.client_level_accuracy_dict = {}
+        
         for client in self.clients:
-            level_accuracy_per_client[client.client_id] = []
+            self.client_level_accuracy_dict[client.client_id] = []
             unpruned_accuracy = 0
 
             for lvl in range(tot_level):
@@ -66,10 +79,8 @@ class RLLotteryServer(LotteryServer):
 
                 if lvl == 0: unpruned_accuracy = lvl_accuracy
                 
-                level_accuracy_per_client[client.client_id].append(\
+                self.client_level_accuracy_dict[client.client_id].append(\
                     round((lvl_accuracy - unpruned_accuracy) * 10000, 2))
-        
-        return level_accuracy_per_client
 
 
     def __get_lvl_accuracy(self, logger_path):
