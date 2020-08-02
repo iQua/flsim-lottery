@@ -98,8 +98,6 @@ class LTHClient(Client):
                 base_model.load_state_dict(torch.load(model_path))
                 generate_sparsity_report(base_model, report_path)
 
-
-
             #lottery mode
             target_level = total_levels
             path_to_model = os.path.join(self.data_folder,   
@@ -107,6 +105,7 @@ class LTHClient(Client):
                         f'model_ep{epoch_num}_it0.pth')
         
         else:
+            logging.info('Train Mode: no pruning level in output path')
             path_to_model = os.path.join(self.data_folder, 
                          'main', f'model_ep{epoch_num}_it0.pth')
 
