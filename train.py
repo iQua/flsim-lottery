@@ -4,6 +4,7 @@ import os
 import sys
 import pytz
 from datetime import datetime
+import copy
 
 import client
 import config
@@ -88,7 +89,8 @@ def update_policy(policy, states, actions, log_prob_actions, \
 def fl_train(fl_server, policy, optimizer, discount_factor, ppo_steps, ppo_clip):
 
     # copy client profile
-    client_level_accuracy_dict = fl_server.client_level_accuracy_dict.copy()
+    client_level_accuracy_dict = copy.deepcopy(fl_server.client_level_accuracy_dict)
+
     rounds = fl_server.config.fl.rounds
     target_accuracy = fl_server.config.fl.target_accuracy
 
@@ -163,6 +165,9 @@ def fl_train(fl_server, policy, optimizer, discount_factor, ppo_steps, ppo_clip)
     policy_loss, value_loss = update_policy(
         policy, states, actions, log_prob_actions, \
         advantages, returns, optimizer, ppo_steps, ppo_clip)
+
+    logging.info(f'Init client dict: {fl_server.client_level_accuracy_dict}')
+    logging.info(f'Runtime client dict: {client_level_accuracy_dict}')
 
     return policy_loss, value_loss, episode_reward, round_id
 

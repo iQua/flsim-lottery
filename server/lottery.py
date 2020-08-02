@@ -70,7 +70,7 @@ class LotteryServer(Server):
 
     #create clients without dataset assigned
     def make_clients(self):
-
+        logging.info('Initializing clients...')
         clients = []
         
         for client_id in range(self.config.clients.total):
