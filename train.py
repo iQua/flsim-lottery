@@ -29,6 +29,7 @@ parser.add_argument('-l', '--log', type=str, default='INFO',
 
 args = parser.parse_args()
 
+
 def current_time():
     tz_NY = pytz.timezone('America/New_York') 
     datetime_NY = datetime.now(tz_NY)

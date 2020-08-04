@@ -62,7 +62,7 @@ class LTHClient(Client):
             dataset_hparams.dataset_name].Dataset.get_test_set()        
 
 
-    def train(self, queue=None):
+    def train(self):
         
         logging.info(f'training on client {self.client_id}')
 
@@ -109,7 +109,6 @@ class LTHClient(Client):
             path_to_model = os.path.join(self.data_folder, 
                          'main', f'model_ep{epoch_num}_it0.pth')
 
-
         #load lottery
         self.model.load_state_dict(torch.load(path_to_model))
         weights = extract_weights(self.model)
@@ -118,10 +117,10 @@ class LTHClient(Client):
         self.report.set_num_samples(len(self.dataset_indices))
         self.report.weights = weights
 
-        queue.put((self.client_id, self.data_folder, len(self.dataset_indices)))
+        return (self.client_id, self.data_folder, len(self.dataset_indices))
 
 
-    def probe(self, queue=None):
+    def probe(self):
         logging.info(f'probing on client {self.client_id}')
 
         self.configure()
@@ -156,7 +155,7 @@ class LTHClient(Client):
 
         #lottery mode
         target_level = total_levels
-        path_to_model = os.path.join(self.data_folder,   
+        path_to_model = os.path.join(self.data_folder,
                     f'level_{target_level}', 'main', 
                     f'model_ep{epoch_num}_it0.pth')
 
@@ -170,7 +169,6 @@ class LTHClient(Client):
 
         # queue.put((self.client_id, self.data_folder, len(self.dataset_indices)))
         return (self.client_id, self.data_folder, len(self.dataset_indices))
-
 
 
     def test(self):

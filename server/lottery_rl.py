@@ -101,17 +101,17 @@ class RLLotteryServer(LotteryServer):
         self.configuration(sample_clients)
 
         with Pool(len(sample_clients)) as pool:
-            processes = [pool.apply_async(client.probe, ()) \
-                for client in self.clients]
+            processes = [pool.apply_async(client.run, ()) \
+                for client in sample_clients]
             proc_results = [proc.get() for proc in processes]
                 
         #get every client path
-        all_client_dict = {
-            client.client_id: client for client in self.clients}
+        sample_client_dict = {
+            client.client_id: client for client in sample_clients}
 
         for client_id, data_folder, num_samples in proc_results:
-            all_client_dict[client_id].data_folder = data_folder
-            all_client_dict[client_id].report.set_num_samples(num_samples)
+            sample_client_dict[client_id].data_folder = data_folder
+            sample_client_dict[client_id].report.set_num_samples(num_samples)
 
         self.testloader = get_testloader(
             self.config.lottery_args.dataset_name, self.server_indices) 
