@@ -24,8 +24,10 @@ import numpy as np
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--config', type=str, default='./config.json',
                     help='Federated learning configuration file.')
-parser.add_argument('-l', '--log', type=str, default='INFO',
-                    help='Log messages level.')
+parser.add_argument('-l', '--log', type=str, default='INFO', \
+    help='Log messages level.')
+parser.add_argument('-m', '--model', type=str, default=None, \
+    help='Path to trained RL model.')
 
 args = parser.parse_args()
 
@@ -328,6 +330,19 @@ def create_fl_server(fl_config):
     return fl_server
 
 
+def init_rl_model(policy, path_to_model=None):
+    logging.info('Initialize RL model')
+    if path_to_model:
+        logging.info(f'Loading RL model {path_to_model}...')
+        policy.load_state_dict(torch.load(path_to_model))
+    else:    
+        def init_weights(m):
+            if type(m) == nn.Linear:
+                torch.nn.init.xavier_normal_(m.weight)
+                m.bias.data.fill_(0)
+        policy.apply(init_weights)
+
+
 def main():
     # Read configuration file
     fl_config = config.Config(args.config, args.log)
@@ -359,12 +374,7 @@ def main():
     LEARNING_RATE = 0.001
     optimizer = optim.Adam(policy.parameters(), lr = LEARNING_RATE)
 
-    def init_weights(m):
-        if type(m) == nn.Linear:
-            torch.nn.init.xavier_normal_(m.weight)
-            m.bias.data.fill_(0)
-    
-    policy.apply(init_weights)
+    init_rl_model(policy, args.model)    
 
     train_rewards = []
     test_rewards = []
