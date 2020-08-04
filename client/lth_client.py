@@ -61,7 +61,7 @@ class LTHClient(Client):
             dataset_hparams.dataset_name].Dataset.get_test_set()        
 
 
-    def train(self, queue=None):
+    def train(self):
         
         logging.info(f'training on client {self.client_id}')
 
@@ -84,8 +84,10 @@ class LTHClient(Client):
             lth_runner.desc.model_hparams, 
             outputs=lth_runner.desc.train_outputs)
 
-
-        if self.args.subcommand == "lottery":
+        if self.args.subcommand == "train":
+            path_to_model = os.path.join(self.data_folder, \
+                'main', f'model_ep{epoch_num}_it0.pth')    
+        else:
             total_levels = self.args.levels
             #calculate sparsity report
             for i in range(total_levels+1):
@@ -97,18 +99,11 @@ class LTHClient(Client):
                 base_model.load_state_dict(torch.load(model_path))
                 generate_sparsity_report(base_model, report_path)
 
-
-
             #lottery mode
             target_level = total_levels
             path_to_model = os.path.join(self.data_folder,   
                         f'level_{target_level}', 'main', 
-                        f'model_ep{epoch_num}_it0.pth')
-        
-        else:
-            path_to_model = os.path.join(self.data_folder, 
-                         'main', f'model_ep{epoch_num}_it0.pth')
-
+                        f'model_ep{epoch_num}_it0.pth')  
 
         #load lottery
         self.model.load_state_dict(torch.load(path_to_model))
@@ -118,7 +113,7 @@ class LTHClient(Client):
         self.report.set_num_samples(len(self.dataset_indices))
         self.report.weights = weights
 
-        queue.put((self.client_id, self.data_folder, len(self.dataset_indices)))
+        return (self.client_id, self.data_folder, len(self.dataset_indices))
 
 
     def test(self):

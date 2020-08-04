@@ -5,7 +5,7 @@ import pickle
 import random
 import sys
 import json
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Pool
 
 import torch
 import torch.multiprocessing as mp
@@ -202,22 +202,18 @@ class LotteryServer(Server):
 
         self.configuration(sample_clients)
 
-        proc_queue = Queue()
-        
-        processes = [mp.Process(target=client.run, args=(proc_queue,)) \
-            for client in sample_clients]
+        with Pool() as pool:
+            processes = [pool.apply_async(client.run, ()) \
+                for client in sample_clients]
+            proc_results = [proc.get() for proc in processes]
 
-        [p.start() for p in processes]
-        [p.join() for p in processes]
-                
         #get every client path
-        sample_client_dict = {
+        all_client_dict = {
             client.client_id: client for client in sample_clients}
 
-        while not proc_queue.empty():
-            client_id, data_folder, num_samples = proc_queue.get()
-            sample_client_dict[client_id].data_folder = data_folder
-            sample_client_dict[client_id].report.set_num_samples(num_samples)
+        for client_id, data_folder, num_samples in proc_results:
+            all_client_dict[client_id].data_folder = data_folder
+            all_client_dict[client_id].report.set_num_samples(num_samples)
 
         self.testloader = get_testloader(
             self.config.lottery_args.dataset_name, self.server_indices) 
