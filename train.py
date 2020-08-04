@@ -405,7 +405,6 @@ def main():
         mean_train_rewards = np.mean(train_rewards[-N_TRIALS:])
         mean_train_round_num = np.mean(train_round_num)
         
-
         if episode % PRINT_EVERY == 0:
             logging.info(
                 f'| Episode: {episode:3} | '\
@@ -421,7 +420,6 @@ def main():
             if mean_test_rewards >= REWARD_THRESHOLD:            
                 logging.info(f'Reached reward threshold in {episode} episodes')
                 break
-        
         
         torch.save(policy.state_dict(), os.path.join(fl_config.paths.model, \
                 f'rl-{fl_config.lottery["model_name"]}-{current_run_time}.pth'))
