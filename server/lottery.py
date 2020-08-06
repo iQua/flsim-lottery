@@ -24,7 +24,7 @@ from server import Server
 from client.lth_client import LTHClient # pylint: disable=impoprt-error
 import utils.dists as dists  # pylint: disable=no-name-in-module
 import utils.fl_model as fl_model 
-from utils.load_dataset import get_partition, get_train_set, get_testloader
+from utils.load_dataset import get_partition, get_train_set, get_testloader, process_celeba_dataset
 import open_lth.models.registry as models_registry
 from open_lth.cli import runner_registry
 
@@ -44,13 +44,18 @@ class LotteryServer(Server):
 
         #get server split and clients total indices
         #server: server_indices, clients: label_idx_dict
+        self.load_data()
+ 
+        # Set up simulated server
+        self.load_model()
+        self.make_clients()
+
+    def load_data(self):
         self.generate_dataset_splits()
         self.loading = self.config.data.loading
         if self.loading == 'static':
             self.get_clients_splits()
-        # Set up simulated server
-        self.load_model()
-        self.make_clients()
+
 
 
     def load_model(self):
@@ -130,7 +135,7 @@ class LotteryServer(Server):
         tot_data_num = LotteryServer.get_dataset_num(self.config.lottery_args.dataset_name)
         if self.loading == 'static':
             client_num = self.config.clients.total
-            tot_num = int(tot_data_num / self.client_num)
+            tot_num = int(tot_data_num / client_num)
             overlap = False
 
         if self.loading == 'dynamic':

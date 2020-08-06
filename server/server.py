@@ -73,8 +73,7 @@ class Server(object):
 
     def set_params(self, round_id):   
         self.config.lottery_args.round_num = round_id
-        self.config.lottery_args.global_model_path = \
-            self.config.paths.model + '/global'
+        self.config.lottery_args.global_model_path = self.config.paths.model 
         self.config.lottery_args.client_num = self.config.clients.total
         
         current_run_path = os.path.join("/mnt/open_lth_data",\
