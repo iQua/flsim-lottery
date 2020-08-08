@@ -365,7 +365,7 @@ class LotteryServer(Server):
         # self.save_model(self.model, self.global_model_path_per_round)
 
         accuracy = accuracy_dict[best_level]
-        logging.info(f'Level {best_level}'\
+        logging.info(f'Level {best_level} Model '\
             +'Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
 
         return accuracy
