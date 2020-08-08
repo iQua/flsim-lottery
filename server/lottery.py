@@ -331,8 +331,7 @@ class LotteryServer(Server):
                     self.save_model(base_model, model_path, f'model.pth')
             else:
                 # backup global model of different levels to round directory
-                # self.save_model(base_model, model_path, f'model.pth')
-                pass
+                self.save_model(base_model, model_path, f'model.pth')
 
             #save model summary and sparsity report
             self.save_model_summary(
