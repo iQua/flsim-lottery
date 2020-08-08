@@ -371,7 +371,7 @@ def main():
 
     policy = ActorCritic(actor, critic)
 
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.0001
     optimizer = optim.Adam(policy.parameters(), lr = LEARNING_RATE)
 
     init_rl_model(policy, args.model)    
