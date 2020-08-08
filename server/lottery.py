@@ -267,7 +267,7 @@ class LotteryServer(Server):
         # update static global model
         self.save_model(self.model, self.static_global_model_path)
         # backup global model to round directory
-        self.save_model(self.model, self.global_model_path_per_round)
+        # self.save_model(self.model, self.global_model_path_per_round)
 
         #get global model summary and sparsity report 
         fl_model.generate_sparsity_report(
@@ -331,7 +331,8 @@ class LotteryServer(Server):
                     self.save_model(base_model, model_path, f'model.pth')
             else:
                 # backup global model of different levels to round directory
-                self.save_model(base_model, model_path, f'model.pth')
+                # self.save_model(base_model, model_path, f'model.pth')
+                pass
 
             #save model summary and sparsity report
             self.save_model_summary(
@@ -362,10 +363,11 @@ class LotteryServer(Server):
         # update static global model
         self.save_model(self.model, self.static_global_model_path)
         # backup the best global model to round directory
-        self.save_model(self.model, self.global_model_path_per_round)
+        # self.save_model(self.model, self.global_model_path_per_round)
 
         accuracy = accuracy_dict[best_level]
-        logging.info('Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
+        logging.info(f'Level {best_level}'\
+            +'Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
 
         return accuracy
 
