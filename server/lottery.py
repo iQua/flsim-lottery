@@ -16,7 +16,7 @@ from server import Server
 from client.lth_client import LTHClient # pylint: disable=impoprt-error
 import utils.dists as dists  # pylint: disable=no-name-in-module
 import utils.fl_model as fl_model 
-from utils.load_dataset import get_partition, get_train_set, get_testloader
+from utils.load_dataset import get_partition, get_train_set, get_testloader, process_celeba_dataset
 import open_lth.models.registry as models_registry
 from open_lth.cli import runner_registry
 from open_lth.pruning.mask import Mask
@@ -43,10 +43,12 @@ class LotteryServer(Server):
         self.loading = self.config.data.loading
         if self.loading in ['static','dynamic_init']:
             self.get_clients_splits()
-
+ 
         # Set up simulated server
         self.load_model(self.static_global_model_path)
         self.make_clients()
+
+
 
 
     def load_model(self, static_global_model_path):
@@ -195,8 +197,10 @@ class LotteryServer(Server):
     def get_dataset_num(dataset_name):
         if dataset_name == "mnist":
             return 60000
-        elif dataset_name == "cifar10":
+        if dataset_name == "cifar10":
             return 50000
+        if dataset_name == "celeba":
+            return 200288
         
 
     def round(self):
@@ -467,6 +471,8 @@ class LotteryServer(Server):
             size = (3, 32, 32)
         if dataset_name == 'fashion_mnist':
             size = (1, 28, 28)
+        if dataset_name == 'celeba':
+            size = (3, 84, 84)
         else:
             print("dataset name is wrong!")
 
