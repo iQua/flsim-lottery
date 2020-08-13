@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 
+
 class Client(object):
     """Simulated federated learning client."""
 
