@@ -6,7 +6,7 @@
         "display_data_distribution": true
     },
     "data": {
-        "loading": "dynamic",
+        "loading": "dynamic_init",
         "partition": {
             "size": 600,
             "range": [
