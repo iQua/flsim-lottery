@@ -76,7 +76,6 @@ def get_partition(labels, majority, minority, pref, bias, secondary):
 TARGET_NAME = 'Smiling'
 parent_path = '/mnt/open_lth_datasets/CelebA'
 
-
 #pylint-disable= syntax-error
 def process_celeba_dataset():
     if os.path.exists('/mnt/open_lth_datasets/CelebA/data/all_data/all_data.csv'):
