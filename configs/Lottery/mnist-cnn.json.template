@@ -6,7 +6,7 @@
         "display_data_distribution": true
     },
     "data": {
-        "loading": "dynamic",
+        "loading": "dynamic-init",
         "partition": {
             "size": 100,
             "range": [
@@ -60,7 +60,7 @@
         "lr": 1.2e-3,
         "training_steps": "1ep",
         "data_order_seed": null,
-        "momentum": null,
+        "momentum": 0.5,
         "nesterov_momentum": null,
         "milestone_steps": null,
         "gamma": null,

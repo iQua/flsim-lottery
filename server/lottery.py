@@ -5,7 +5,7 @@ import pickle
 import random
 import sys
 import json
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Pool
 
 import torch
 import torch.multiprocessing as mp
@@ -41,15 +41,15 @@ class LotteryServer(Server):
         #server: server_indices, clients: label_idx_dict
         self.generate_dataset_splits()
         self.loading = self.config.data.loading
-        if self.loading in ['static','dynamic_init']:
+        if self.loading in ['static', 'dynamic_init']:
             self.get_clients_splits()
 
         # Set up simulated server
-        self.load_model(self.static_global_model_path)
+        self.init_model(self.static_global_model_path)
         self.make_clients()
 
 
-    def load_model(self, static_global_model_path):
+    def init_model(self, static_global_model_path):
 
         lottery_runner = runner_registry.get(
             self.config.lottery_args.subcommand).create_from_args( \
@@ -61,8 +61,6 @@ class LotteryServer(Server):
             outputs=lottery_runner.desc.train_outputs)
 
         self.save_model(self.model, static_global_model_path)
-    
-
         self.baseline_weights = fl_model.extract_weights(self.model)
 
         #extract flattened weights
@@ -72,7 +70,7 @@ class LotteryServer(Server):
 
     #create clients without dataset assigned
     def make_clients(self):
-
+        logging.info('Initializing clients...')
         clients = []
         
         for client_id in range(self.config.clients.total):
@@ -84,7 +82,7 @@ class LotteryServer(Server):
             
         self.clients = clients
 
-        logging.info('Download datasets if not exist...')
+        logging.info('Download datasets if not exist...\n')
         warmup_client = LTHClient(-1, self.config)
         warmup_client.download_datasets()
 
@@ -125,14 +123,12 @@ class LotteryServer(Server):
             client_num = self.config.clients.total
             tot_num = int(tot_data_num / client_num)
             overlap = False
-
-        if self.loading == 'dynamic':
-            client_num = self.config.clients.per_round
+        elif self.loading == 'dynamic_init':
+            client_num = self.config.clients.total
             tot_num = self.config.data.partition['size']
             overlap = True
-        
-        if self.loading == 'dynamic_init':
-            client_num = self.config.clients.total
+        else:
+            client_num = self.config.clients.per_round
             tot_num = self.config.data.partition['size']
             overlap = True
 
@@ -204,20 +200,16 @@ class LotteryServer(Server):
 
         self.configuration(sample_clients)
 
-        proc_queue = Queue()
-        
-        processes = [mp.Process(target=client.run, args=(proc_queue,)) \
-            for client in sample_clients]
+        with Pool() as pool:
+            processes = [pool.apply_async(client.run, ()) \
+                for client in sample_clients]
+            proc_results = [proc.get() for proc in processes]
 
-        [p.start() for p in processes]
-        [p.join() for p in processes]
-                
         #get every client path
         sample_client_dict = {
             client.client_id: client for client in sample_clients}
 
-        while not proc_queue.empty():
-            client_id, data_folder, num_samples = proc_queue.get()
+        for client_id, data_folder, num_samples in proc_results:
             sample_client_dict[client_id].data_folder = data_folder
             sample_client_dict[client_id].report.set_num_samples(num_samples)
 
@@ -275,7 +267,7 @@ class LotteryServer(Server):
         # update static global model
         self.save_model(self.model, self.static_global_model_path)
         # backup global model to round directory
-        self.save_model(self.model, self.global_model_path_per_round)
+        # self.save_model(self.model, self.global_model_path_per_round)
 
         #get global model summary and sparsity report 
         fl_model.generate_sparsity_report(
@@ -292,7 +284,7 @@ class LotteryServer(Server):
         return accuracy
 
 
-    def __get_accuracy_per_level(self, sample_clients, reports):
+    def get_accuracy_per_level(self, sample_clients, reports, prune_level=None):
 
         client_paths = [client.data_folder for client in sample_clients]
         tot_level = self.config.lottery_args.levels + 1
@@ -333,8 +325,13 @@ class LotteryServer(Server):
             model_path = os.path.join(self.global_model_path_per_round, \
                 'global', f'level_{i}')
 
-            # backup global model of different levels to round directory
-            self.save_model(base_model, model_path, f'model.pth')    
+            if prune_level: # If specify level, only save this level model
+                if prune_level == i: 
+                    # backup global model of different levels to round directory
+                    self.save_model(base_model, model_path, f'model.pth')
+            else:
+                # backup global model of different levels to round directory
+                self.save_model(base_model, model_path, f'model.pth')
 
             #save model summary and sparsity report
             self.save_model_summary(
@@ -351,7 +348,7 @@ class LotteryServer(Server):
 
     def get_best_lottery(self, sample_clients, reports):
 
-        accuracy_dict = self.__get_accuracy_per_level(sample_clients, reports)       
+        accuracy_dict = self.get_accuracy_per_level(sample_clients, reports)       
 
         best_level = max(accuracy_dict, key=accuracy_dict.get)
         best_path = os.path.join(
@@ -365,10 +362,11 @@ class LotteryServer(Server):
         # update static global model
         self.save_model(self.model, self.static_global_model_path)
         # backup the best global model to round directory
-        self.save_model(self.model, self.global_model_path_per_round)
+        # self.save_model(self.model, self.global_model_path_per_round)
 
         accuracy = accuracy_dict[best_level]
-        logging.info('Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
+        logging.info(f'Level {best_level} Model '\
+            +'Best average accuracy: {:.2f}%\n'.format(100 * accuracy))
 
         return accuracy
 
@@ -406,7 +404,9 @@ class LotteryServer(Server):
         
     def get_pruned_model(self, sample_clients, reports, prune_level):
         # accuracy_dict = { level: global_model_accuracy }
-        accuracy_dict = self.__get_accuracy_per_level(sample_clients, reports)
+        accuracy_dict = self.get_accuracy_per_level(
+            sample_clients, reports, prune_level)
+
         selected_model_path = os.path.join(self.global_model_path_per_round, \
             'global', f'level_{prune_level}', 'model.pth')
         
@@ -415,16 +415,16 @@ class LotteryServer(Server):
 
         #get best global model mask and save to the static mask path(update with every round)
         #self.save_global_mask(
-        #    self.model, self.static_global_model_path+f'/mask.pth')
+            # self.model, self.static_global_model_path+f'/mask.pth')
 
         # update static global model for next round
         self.save_model(self.model, self.static_global_model_path)
         # backup the seleted global model to round directory
-        self.save_model(self.model, self.global_model_path_per_round)
+        # self.save_model(self.model, self.global_model_path_per_round)
 
         accuracy = accuracy_dict[prune_level]
         logging.info(f'Selected level-{prune_level} model accuracy: '\
-            + '{:.2f}%\n'.format(100 * accuracy))
+            + '{:.2f}%'.format(100 * accuracy))
         
         return accuracy
           
@@ -471,6 +471,10 @@ class LotteryServer(Server):
             print("dataset name is wrong!")
 
         fpath = pth_path[:-4]+'summary'
+
+        if not os.path.exists(fpath[:-9]):
+            os.makedirs(fpath[:-9])
+
         stdoutOrigin = sys.stdout
         sys.stdout = open(fpath, 'w+')
         summary(model.to(device), size)
@@ -482,14 +486,15 @@ class LotteryServer(Server):
 
         display = self.config.clients.display_data_distribution
         for i in range(len(sample_clients)):   
-            client = sample_clients[i]         
+            client = sample_clients[i]
             
             if self.loading in ['static', 'dynamic_init']:
-                dataset_indices = self.id_index_list[client.client_id]
-            
-            if self.loading == 'dynamic':
+                dataset_indices = self.id_index_list[client.client_id]            
+            elif self.loading == 'dynamic':
                 self.get_clients_splits()
                 dataset_indices = self.id_index_list[i]
+            else:
+                dataset_indices = self.id_index_list[client.client_id] 
 
             client.set_data_indices(dataset_indices)
             
