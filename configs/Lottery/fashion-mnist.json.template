@@ -1,14 +1,14 @@
 {
     "clients": {
         "total": 100,
-        "per_round": 3,
+        "per_round": 10,
         "label_distribution": "uniform",
         "display_data_distribution": true
     },
     "data": {
         "loading": "dynamic_init",
         "partition": {
-            "size": 600,
+            "size": 3000,
             "range": [
                 50,
                 200
@@ -20,7 +20,7 @@
     "federated_learning": {
         "rounds": 1000,
         "aggregation": "normal",
-        "target_accuracy": 0.97,
+        "target_accuracy": 0.87,
         "prune_level_setter": "greedy"
     },
     "paths": {
@@ -38,7 +38,7 @@
         "default_hparams": null,
         "quiet": false,
         "evaluate_only_at_end": false,
-        "levels": 5,
+        "levels": 4,
         "rewinding_steps": null,
         "pretrain": false,
         "dataset_name": "fashion_mnist",
@@ -60,7 +60,7 @@
         "lr": 0.01,
         "training_steps": "1ep",
         "data_order_seed": null,
-        "momentum": null,
+        "momentum": 0.5,
         "nesterov_momentum": null,
         "milestone_steps": null,
         "gamma": null,
@@ -68,7 +68,7 @@
         "weight_decay": null,
         "apex_fp16": false,
         "pruning_strategy": "sparse_global",
-        "pruning_fraction": 0.2,
+        "pruning_fraction": 0.05,
         "pruning_layers_to_ignore": null,
         "client_num": 100,
         "client_id": null,
