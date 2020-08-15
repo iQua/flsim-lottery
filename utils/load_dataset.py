@@ -5,8 +5,8 @@ from torchvision import datasets, transforms
 import utils.dists as dists
 
 def get_train_set(dataset_name):
-    print(dataset_name)
-    if(dataset_name == "mnist"):
+
+    if(dataset_name.strip() == "mnist"):
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.1307], std=[0.3081])
@@ -14,7 +14,7 @@ def get_train_set(dataset_name):
         dataset = datasets.MNIST(root='./data', train=True,
                                        download=True, transform=transform)
     
-    elif(dataset_name == "cifar10"):
+    elif(dataset_name.strip() == "cifar10"):
         transform = transforms.Compose([
             transforms.RandomHorizontalFlip(), 
             transforms.RandomCrop(32, 4),
@@ -23,7 +23,7 @@ def get_train_set(dataset_name):
         dataset = datasets.CIFAR10(root='./data', train=True, 
                                     download=True, transform=transform)
 
-    elif(dataset_name == "fashion_mnist"):
+    elif(dataset_name.strip() == "fashion_mnist"):
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.1307], std=[0.3081])
@@ -31,8 +31,8 @@ def get_train_set(dataset_name):
         dataset = datasets.FashionMNIST(root='./data', train=True,
                                        download=True, transform=transform)
 
-    else:
-        print("Error! dataset name is wrong.")
+    else:    
+        print(f"Error! dataset name {dataset_name} is wrong.")
 
     return dataset
 
