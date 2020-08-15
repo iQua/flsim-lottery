@@ -33,11 +33,11 @@ def get_train_set(dataset_name):
 
     if(dataset_name == "celeba"):
         process_celeba_dataset()
-        csv_path = '/mnt/open_lth_datasets/CelebA/data/all_data/all_data.csv'
+        csv_path = '/mnt/open_lth_datasets/CelebA/data/train/celeba-gender-train.csv'
         root_path = '/mnt/open_lth_datasets/CelebA/data/img_align_celeba/img_align_celeba'
         transform = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.CenterCrop(84),
+            transforms.CenterCrop((178, 178)),
+            transforms.Resize((84, 84)),
             transforms.ToTensor()
         ])
         dataset = CelebaDataset(csv_path, root_path, transform=transform)
@@ -73,21 +73,18 @@ def get_partition(labels, majority, minority, pref, bias, secondary):
 
 #this function to read the celebA data and process it then save
 # adpated from leaf/data/celeba/metadata_to_json.py
-TARGET_NAME = 'Smiling'
+TARGET_NAME = 'Male'
 parent_path = '/mnt/open_lth_datasets/CelebA'
 
 #pylint-disable= syntax-error
 def process_celeba_dataset():
-    if os.path.exists('/mnt/open_lth_datasets/CelebA/data/all_data/all_data.csv'):
+    if os.path.exists('/mnt/open_lth_datasets/CelebA/data/train/celeba-gender-train.csv'):
         print('Datasets already processed')
+        
         return
     download_celeba_dataset() 
-    extract_images()  
-    identities, attributes = get_metadata()
-    celebrities = get_celebrities_and_images(identities)
-    targets = get_celebrities_and_target(celebrities, attributes)
-    csv_data = build_csv_format(celebrities, targets)
-    write_csv(csv_data)
+    extract_images() 
+    process_dataset()
 
 
 # download  ```identity_CelebA.txt``` and ```list_attr_celeba.txt```
@@ -96,18 +93,18 @@ def process_celeba_dataset():
 # Place the images in a folder named ```img_align_celeba``` 
 def download_celeba_dataset():
     if os.path.exists('/mnt/open_lth_datasets/CelebA/data/raw'):
-        print('Raw datasets already downloaded and exists')
+        print('Raw datasets already downloaded.')
+        
         return
     file_folder = os.path.join(parent_path, 'data', 'raw')
     os.makedirs(file_folder, exist_ok=True)
     file_list = [
-        # File ID                         MD5 Hash                            Filename
-        ("0B7EVK8r0v71pZjFTYXZWM3FlRnM", "00d2c5bc6d35e252742224ab0c1e8fcb", "img_align_celeba.zip"),
-        ("0B7EVK8r0v71pblRyaVFSWGxPY0U", "75e246fa4810816ffd6ee81facbd244c", "list_attr_celeba.txt"),
-        ("1_ee_0u7vcNLOfNLegJRHmolfH5ICW-XS", "32bd1bd63d3c78cd57e08160ec5ed1e2", "identity_CelebA.txt")
+        # File ID                             Filename
+        ("0B7EVK8r0v71pZjFTYXZWM3FlRnM", "img_align_celeba.zip"),
+        ("0B7EVK8r0v71pblRyaVFSWGxPY0U", "list_attr_celeba.txt"),
+        ("0B7EVK8r0v71pY0NSMzRuSXJEVkk", "list_eval_partition.txt")
     ]
-    for fid, _, fname in file_list:
-
+    for fid, fname in file_list:
         url = 'https://drive.google.com/uc?id='+fid
         output = os.path.join(file_folder, fname)
         gdown.download(url, output, quiet=False)
@@ -119,6 +116,32 @@ def extract_images():
         return
     with zipfile.ZipFile(os.path.join(parent_path, 'data', 'raw', 'img_align_celeba.zip'), "r") as f:
             f.extractall(img_folder)
+
+def process_dataset():
+    attr_path = os.path.join(parent_path, 'data', 'raw', 'list_attr_celeba.txt')
+    eval_path = os.path.join(parent_path, 'data', 'raw', 'list_eval_partition.txt')
+    f3_path = os.path.join(parent_path, 'data', 'train', 'celeba-gender-partitions.csv')
+    train_path = os.path.join(parent_path, 'data', 'train', 'celeba-gender-train.csv')
+    valid_path = os.path.join(parent_path, 'data', 'train', 'celeba-gender-valid.csv')
+    test_path = os.path.join(parent_path, 'data', 'train', 'celeba-gender-test.csv')
+
+    df1 = pd.read_csv(attr_path, sep="\s+", skiprows=1, usecols=['Male'])
+    df1.loc[df1['Male'] == -1, 'Male'] = 0
+
+    df2 = pd.read_csv(eval_path, sep="\s+", skiprows=0, header=None)
+    df2.columns = ['Filename', 'Partition']
+    df2 = df2.set_index('Filename')
+
+    if not os.path.exists(os.path.join(parent_path, 'data', 'train')):
+        os.mkdir(os.path.join(parent_path, 'data', 'train'))
+    df3 = df1.merge(df2, left_index=True, right_index=True)
+    df3.to_csv(f3_path)
+
+    df4 = pd.read_csv(f3_path, index_col=0)
+
+    df4.loc[df4['Partition'] == 0].to_csv(train_path)
+    df4.loc[df4['Partition'] == 1].to_csv(valid_path)
+    df4.loc[df4['Partition'] == 2].to_csv(test_path)
 
 def get_metadata():
     f_identities = open(os.path.join(
