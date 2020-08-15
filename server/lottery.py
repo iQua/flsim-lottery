@@ -460,12 +460,12 @@ class LotteryServer(Server):
     def save_model_summary(self, model, pth_path):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        dataset_name = self.config.lottery_args.dataset_name
+        dataset_name = self.config.lottery_args.dataset_name.strip()
         if dataset_name == 'mnist':
             size = (1, 28, 28)
-        if dataset_name == 'cifar10':
+        elif dataset_name == 'cifar10':
             size = (3, 32, 32)
-        if dataset_name == 'fashion_mnist':
+        elif dataset_name == 'fashion_mnist':
             size = (1, 28, 28)
         else:
             print("dataset name is wrong!")
