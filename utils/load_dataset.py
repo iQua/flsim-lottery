@@ -6,7 +6,7 @@ import utils.dists as dists
 
 def get_train_set(dataset_name):
 
-    if(dataset_name.strip() == "mnist"):
+    if dataset_name == "mnist":
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.1307], std=[0.3081])
@@ -14,16 +14,17 @@ def get_train_set(dataset_name):
         dataset = datasets.MNIST(root='./data', train=True,
                                        download=True, transform=transform)
     
-    elif(dataset_name.strip() == "cifar10"):
+    elif dataset_name == "cifar10":
         transform = transforms.Compose([
             transforms.RandomHorizontalFlip(), 
             transforms.RandomCrop(32, 4),
-            transforms.ToTensor() 
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
         dataset = datasets.CIFAR10(root='./data', train=True, 
                                     download=True, transform=transform)
 
-    elif(dataset_name.strip() == "fashion_mnist"):
+    elif dataset_name == "fashion_mnist":
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.1307], std=[0.3081])
@@ -38,9 +39,18 @@ def get_train_set(dataset_name):
 
 def get_testloader(dataset_name, indices):
 
-    dataset =  get_train_set(dataset_name)
-    subset = torch.utils.data.Subset(dataset, indices)
-    dataloader = torch.utils.data.DataLoader(subset)
+    if dataset_name == "cifar10":
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        dataset = datasets.CIFAR10(root='./data', train=False, 
+                                    download=True, transform=transform)
+        dataloader = torch.utils.data.DataLoader(dataset)
+    else:
+        dataset =  get_train_set(dataset_name)    
+        subset = torch.utils.data.Subset(dataset, indices)
+        dataloader = torch.utils.data.DataLoader(subset)
 
     return dataloader
 
