@@ -1,14 +1,14 @@
 {
     "clients": {
         "total": 100,
-        "per_round": 2,
+        "per_round": 10,
         "label_distribution": "uniform",
         "display_data_distribution": true
     },
     "data": {
-        "loading": "dynamic",
+        "loading": "dynamic_init",
         "partition": {
-            "size": 600,
+            "size": 3000,
             "range": [
                 50,
                 200
@@ -20,7 +20,7 @@
     "federated_learning": {
         "rounds": 200,
         "aggregation": "normal",
-        "target_accuracy": 0.97,
+        "target_accuracy": 0.92,
         "prune_level_setter": "manual"
     },
     "paths": {
@@ -31,7 +31,7 @@
     "server": "lth",
     "model": "lottery",
     "lottery": {
-        "subcommand": "lottery",
+        "subcommand": "train",
         "platform": "local",
         "display_output_location": false,
         "num_workers": 0,
@@ -59,7 +59,7 @@
         "others_frozen_exceptions": null,
         "optimizer_name": "sgd",
         "lr": 0.1,
-        "training_steps": "1ep",
+        "training_steps": "5ep",
         "data_order_seed": null,
         "momentum": 0.9,
         "nesterov_momentum": null,
