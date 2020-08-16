@@ -100,7 +100,7 @@ class RLLotteryServer(LotteryServer):
         
         self.configuration(sample_clients)
 
-        with Pool(len(sample_clients)) as pool:
+        with Pool() as pool:
             processes = [pool.apply_async(client.run, ()) \
                 for client in sample_clients]
             proc_results = [proc.get() for proc in processes]
