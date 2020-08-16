@@ -17,7 +17,7 @@ def get_train_set(dataset_name):
     elif(dataset_name.strip() == "cifar10"):
         transform = transforms.Compose([
             transforms.RandomHorizontalFlip(), 
-            transforms.RandomCrop(32, 4),
+            transforms.RandomCrop(32, 4),            
             transforms.ToTensor() 
         ])
         dataset = datasets.CIFAR10(root='./data', train=True, 
