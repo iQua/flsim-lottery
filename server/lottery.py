@@ -513,6 +513,7 @@ class LotteryServer(Server):
             label_cnt.append(len(intersection))
 
         tot_num = sum(label_cnt)
+        
         if self.config.data.IID:
             logging.info(
                 f'Total {tot_num} data in client {client.client_id}, {label_cnt[0]} for one label.')

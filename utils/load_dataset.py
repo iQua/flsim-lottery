@@ -38,7 +38,7 @@ def get_train_set(dataset_name):
 
 def get_testloader(dataset_name, indices):
 
-    dataset =  get_train_set(dataset_name)
+    dataset = get_train_set(dataset_name)
     subset = torch.utils.data.Subset(dataset, indices)
     dataloader = torch.utils.data.DataLoader(subset)
 
