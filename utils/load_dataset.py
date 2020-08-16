@@ -13,25 +13,26 @@ from open_lth.datasets.celeba import CelebaDataset
 import utils.dists as dists
 
 def get_train_set(dataset_name):
-    if(dataset_name == "mnist"):
+
+    if dataset_name == "mnist":
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.1307], std=[0.3081])
         ])
         dataset = datasets.MNIST(root='./data', train=True,
                                        download=True, transform=transform)
-        
-
-    if(dataset_name == "cifar10"):
+    
+    elif dataset_name == "cifar10":
         transform = transforms.Compose([
             transforms.RandomHorizontalFlip(), 
             transforms.RandomCrop(32, 4),
-            transforms.ToTensor() 
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
         dataset = datasets.CIFAR10(root='./data', train=True, 
                                     download=True, transform=transform)
 
-    if(dataset_name == "celeba"):
+    elif dataset_name == "celeba":
         process_celeba_dataset()
         csv_path = '/mnt/open_lth_datasets/CelebA/data/train/celeba-gender-train.csv'
         root_path = '/mnt/open_lth_datasets/CelebA/data/img_align_celeba/img_align_celeba'
@@ -42,13 +43,32 @@ def get_train_set(dataset_name):
         ])
         dataset = CelebaDataset(csv_path, root_path, transform=transform)
 
+    elif dataset_name == "fashion_mnist":
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.1307], std=[0.3081])
+        ])
+        dataset = datasets.FashionMNIST(root='./data', train=True,
+                                       download=True, transform=transform)
+    else:    
+        print(f"Error! dataset name {dataset_name} is wrong.")
+
     return dataset
 
 def get_testloader(dataset_name, indices):
 
-    dataset =  get_train_set(dataset_name)
-    subset = torch.utils.data.Subset(dataset, indices)
-    dataloader = torch.utils.data.DataLoader(subset)
+    if dataset_name == "cifar10":
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+        dataset = datasets.CIFAR10(root='./data', train=False, 
+                                    download=True, transform=transform)
+        dataloader = torch.utils.data.DataLoader(dataset)
+    else:
+        dataset =  get_train_set(dataset_name)    
+        subset = torch.utils.data.Subset(dataset, indices)
+        dataloader = torch.utils.data.DataLoader(subset)
 
     return dataloader
 

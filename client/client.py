@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 
+
 class Client(object):
     """Simulated federated learning client."""
 
@@ -78,16 +79,16 @@ class Client(object):
         # Create optimizer
         self.optimizer = fl_model.get_optimizer(self.model)
 
-    def run(self, queue=None):
+    def run(self):
         # Perform federated learning task
-        self.train(queue)
+        return self.train()
 
     def get_report(self):
         # Report results to server.
         return self.upload(self.report)
 
     # Machine learning tasks
-    def train(self, queue=None):
+    def train(self):
         import fl_model  # pylint: disable=import-error
 
         logging.info('Training on client #{}'.format(self.client_id))

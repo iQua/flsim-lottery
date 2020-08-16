@@ -22,10 +22,25 @@ def current_time():
 class Server(object):
     """Basic federated learning server."""
 
-    def __init__(self, config):
+    def __init__(self, config, env=None, agent=None):
         self.config = config
         self.saved_reports = {}
+        
+        self.agent = agent
+        self.env = env
 
+        self.init_run_path()
+        
+        # Set logging
+        logging.basicConfig(
+            filename=os.path.join(self.current_run_path, 'logger.log'), 
+            format='[%(threadName)s][%(asctime)s]: %(message)s', 
+            level=self.config.log_level, 
+            datefmt='%H:%M:%S')
+
+
+    def init_run_path(self):
+        
         if self.config.lottery_args.subcommand == "lottery":
             self.current_run_path = os.path.join("/mnt/open_lth_data",\
                 current_time()+"-"+self.config.lottery_args.subcommand\
@@ -36,13 +51,6 @@ class Server(object):
 
         if not os.path.exists(self.current_run_path):
             os.mkdir(self.current_run_path)
-        
-        # Set logging
-        logging.basicConfig(
-            filename=os.path.join(self.current_run_path, 'logger.log'), 
-            format='[%(threadName)s][%(asctime)s]: %(message)s', 
-            level=self.config.log_level, 
-            datefmt='%H:%M:%S')
 
 
     # Set up server

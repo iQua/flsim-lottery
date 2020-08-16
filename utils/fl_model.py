@@ -48,7 +48,7 @@ def test(model, testloader):
             # get the index of the max log-probability
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(label.view_as(pred)).sum().item()
-
+    
     accuracy = correct / total
     logging.debug('Accuracy: {:.2f}%'.format(100 * accuracy))
 
