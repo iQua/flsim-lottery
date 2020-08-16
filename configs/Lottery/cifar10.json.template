@@ -13,15 +13,14 @@
                 50,
                 200
             ],
-        "server_split": 0.1
+        "server_split": 0
         },
         "IID": true
     },
     "federated_learning": {
-        "rounds": 200,
-        "aggregation": "normal",
-        "target_accuracy": 0.92,
-        "prune_level_setter": "manual"
+        "rounds": 1000,
+        "target_accuracy": 0.95,
+        "mode": "normal"
     },
     "paths": {
         "data": "./data",
@@ -43,7 +42,7 @@
         "rewinding_steps": null,
         "pretrain": false,
         "dataset_name": "cifar10",
-        "batch_size": 64,
+        "batch_size": 64, 
         "do_not_augment": false,
         "transformation_seed": null,
         "subsample_fraction": null,
@@ -72,9 +71,8 @@
         "pruning_fraction": 0.2,
         "pruning_layers_to_ignore": null,
         "client_num": 100,
-        "bias_fraction": 0,
-        "client_id": 0,
-        "round_num": 5,
+        "client_id": null,
+        "round_num": null,
         "index_list": null,
         "global_model_path": null,
         "prefix_path": null
