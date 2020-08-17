@@ -2,7 +2,7 @@
 
 
 
-## FLLottery: Optimizing Federated Learning with Lottery Tickets
+### FLLottery: Optimizing Federated Learning with Lottery Tickets
 
 Federated Learning has become a practical distributed machine learning paradigm that exploits massive volumes of user data stored on mobile devices to train a global model without violating user privacy. However, unreliable and relatively slow network connections from mobile devices to the server have become a critical bottleneck for model updates, potentially degrading its performance. Without access to training data, it is infeasible to optimize the global model structure and shrink model updates without degrading model quality.
   
